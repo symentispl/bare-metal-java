@@ -1,0 +1,158 @@
+= Bare metal Java
+:idprefix:
+:stem: asciimath
+:backend: html
+:source-highlighter: highlightjs
+:highlightjs-style: github
+:revealjs_history: true
+:revealjs_theme: night
+:revealjs_controls: false
+:revealjs_width: 1920
+:revealjs_height: 1080
+:imagesdir: images
+:customcss: css/custom.css
+:icons: font
+:title-slide-background-image: pexels-pixabay-327049.jpg
+
+== about me
+
+Jarek Pałka (@j_palka)
+
+Neo4j (a graph database) performance engineer/team lead
+
+over 20 years with JVM ( and people) +
+speaker, coder, architect
+
+founder of SegFault conference +
+godfather of Programistyczna Grupa Rozwoju
+
+== DISCLAIMER
+
+this presentation may contain strong language, +
+my own opinions, references
+to sex, drugs, religion, alcohol and politics
+
+if this does make you feel offended +
+that's good it means you have something you care about in your life
+
+== the raise and fall on managed runtime
+
+yet another taxonomy of programming languages
+
+* compiled (C/C++)
+* compiled with managed runtime (Go, Pony)
+* interpreted with managed runtime (LISP,Smalltalk,Java,C#,JavaScript,Erlang,Python, PHP, Perl) (aka virtual machines)
+
+=== managed runtime
+
+all the hard things
+
+* memory management (garbage collectors)
+* threads management
+* code management (runtime linking)
+* calling native code (because we are interpreted)
+* (operating system abstraction)*
+
+=== why?
+
+to give up control for safety
+
+=== !
+
+* memory safety
+* operation safety
+* execution safety
+
+=== !
+
+when you give up control, +
+you loose a lot of opportunities to optimize your code +
+(notice I didn't say you loose performance)
+
+== Java as a system's language?
+
+stupid idea!
+(especially when management of resources is critical)
+
+=== !
+
+Apache Kafka +
+Neo4j +
+Elastic +
+Hazelcast +
+Cassandra +
+Apache BigData Ecosystem
+
+=== are these people stupid or?
+
+crazy?
+
+=== !
+
+no
+
+safety is more important than speed
+
+you don't want your databases to randomly crash
+
+=== but all we need is
+
+need for speed :)
+
+=== sun.misc.Unsafe
+
+internal API abused beyond creators imagination
+
+* memory allocation
+* object layout
+* low level concurrency controls
+* serialization
+
+=== welcome, bare metal Java
+
+* foreign memory allocation
+* foreign linker
+* vectorization
+* low-level concurrency controls
+* frozen arrays, i całą seria optymalizacji, która za tym idzie
+* primitive objects (i projekt Valhalla)
+
+== vectorization
+
+[code,java]
+----
+x1=y1+z1;
+x2=y2+z2;
+x3=y3+z3;
+x4=y4+z4;
+----
+
+=== !
+
+[code,java]
+----
+[y1,y2,y3,y4]+[z1,z2,z3,z4]
+----
+
+=== nothing new
+
+Intel's SSE and AVX extensions+
+add new instruction and wide registers
+
+JVM has support for it for a long time +
+JIT generates specific intrinsics +
+vectorized loops
+
+but you have almost no control over it
+
+=== JEP 414: Vector API (Second Incubator)
+
+https://openjdk.java.net/jeps/414[]
+
+? benchmark + hsdis ? porównać różne operacje (dzielenie ? )
+
+
+
+
+
+== thank you
