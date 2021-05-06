@@ -110,12 +110,194 @@ internal API abused beyond creators imagination
 
 === welcome, bare metal Java
 
-* foreign memory allocation
+* foreign memory
 * foreign linker
 * vectorization
-* low-level concurrency controls
 * frozen arrays, i całą seria optymalizacji, która za tym idzie
 * primitive objects (i projekt Valhalla)
+* low-level concurrency controls
+
+== malloc baby
+
+=== DirectByteBuffer
+
+freeing unused memory (famous Cleaner)
+inefficient under pressure
+
+=== Unsafe.allocateMemory
+
+breaks memory safety guarantees, not official API,
+
+=== JNI
+
+=== it takes three
+
+* first proposed by JEP 370 and targeted to Java 14
+* and later re-incubated by JEP 383 which was targeted to Java 15
+* third proposal https://openjdk.java.net/jeps/393[JEP 393] released with Java 16
+
+=== goals
+
+[quote,,JEP 393]
+Generality: A single API should be able to operate on various kinds of foreign memory (e.g., native memory,     persistent memory, managed heap memory, etc.).
+
+=== goals
+
+[quote,,JEP 393]
+Safety: It should not be possible for the API to undermine the safety of the JVM, regardless of the kind of memory being operated upon.
+
+=== goals
+
+[quote,,JEP 393]
+Control: Clients should have options as to how memory segments are to be deallocated: either explicitly (via a method call) or implicitly (when the segment is no longer in use).
+
+=== goals
+
+[quote,,JEP 393]
+Usability: For programs that need to access foreign memory, the API should be a compelling alternative to legacy Java APIs such as sun.misc.Unsafe.
+
+=== concepts
+
+* MemorySegment
+* MemoryAddress
+* MemoryLayout
+
+=== MemorySegment
+
+models a contiguous memory region with given spatial and temporal bounds,
+any access outside spatial or temporal bounds will end upt with exception
+
+[code,java]
+----
+try(var memorySegment = MemorySegment.allocateNative(1024)){
+}
+----
+
+=== !
+
+[code,java]
+----
+var memorySegment = MemorySegment.allocateNative(1024))
+// lots of code
+memorySegment.close(); // hi, manuall memory management
+----
+
+=== !
+
+[code,java]
+----
+var memorySegment = MemorySegment.allocateNative(1024));
+var cleaner = Cleaner.create(); //uses PhantomReferences and ReferenceQueue
+memorySegment.registerCleaner(cleaner);
+----
+
+=== !
+
+memory segment can be:
+
+* on-heap
+* off-heap
+* memory mapped file
+* NVRAM (https://openjdk.java.net/jeps/352[JEP 352: Non-Volatile Mapped Byte Buffers])
+
+=== thread confinement
+
+by default, memory segments are confined to thread it created,
+any access from other threads is forbidden,
+
+you can change ownership of segment or make it shareable
+
+[code,java]
+----
+try(var memorySegment = MemorySegment.allocateNative(1024)){
+    var newOwnerMemorySegment = memorySegment.handoff(otherThread);
+    // from now on, access to memorySegment is forbiden
+    var sharedMemorySegment = newOwnerMemorySegment.share();
+    // now you can share segment between threads,
+    //they still point to same memory address
+}
+----
+
+=== native scope
+
+[code,java]
+----
+try(var memorySegment = MemorySegment.allocateNative(1024)){
+}
+----
+
+=== dereferencing memory
+
+=== MemoryLayout
+
+a programmatic description of a memory segment's contents
+
+* sequences
+* structs
+* unions
+
+=== !
+
+[code,java]
+----
+----
+
+=== hello C
+
+* JNI, old, slow, hard to implement,no major improvements since release,
+* and collection of JNI wrappers,
+** https://github.com/java-native-access/jna[JNA], open source JNI wrapper,
+** https://github.com/jnr/jnr-ffi[jnr-ffi]
+** https://github.com/bytedeco/javacpp[JavaCPP]
+** https://github.com/jmarranz/jnieasy[JNIEasy]
+
+=== eat your own dog food
+
+JNI is used in many places in JDK (and JVM), +
+these things are inherently slow and bloated +
+my favorite part java.io and java.net
+
+=== project panama
+
+foreign memory & foreign linker to ease access to native memory and native code
+
+=== goals
+
+Ease of use: Replace JNI with a superior pure-Java development model
+
+=== goals
+
+C support: The initial scope of this effort aims at providing high quality, fully optimized interoperability with C libraries, on x64 and AArch64 platforms.
+
+=== goals
+
+Generality: The Foreign Linker API and implementation should be flexible enough to, over time, accommodate support for other platforms (e.g., 32-bit x86) and foreign functions written in languages other than C (e.g. C++, Fortran).
+
+=== goals
+
+Performance: The Foreign Linker API should provide performance that is comparable to, or better than, JNI.
+
+=== say hi to `CLinker`
+
+* downcalls (e.g. calls from Java to native code), the downcallHandle method can be used to model native functions as plain MethodHandle objects.
+* upcalls (e.g. calls from native back to Java code), the upcallStub method can be used to convert an existing MethodHandle (which might point to some Java method) into a MemorySegment, which can then be passed to a native function as a function pointer.
+
+=== core
+
+* CLinker
+* LibraryLookup
+* FunctionDescriptor
+
+=== too much magic
+
+panama early access builds contain a real gem
+
+=== jextract
+
+it generates Java code from C header files
+
+=== demo
+
 
 == vectorization
 
@@ -136,12 +318,14 @@ x4=y4+z4;
 
 === nothing new
 
-Intel's SSE and AVX extensions+
-add new instruction and wide registers
+SIMD (Single Instruction Multiple Data)
+
+Intel's SSE and AVX extensions +
+add new instructions and wide registers
 
 JVM has support for it for a long time +
-JIT generates specific intrinsics +
-vectorized loops
+through intrinsics +
+and JIT optimizations (vectorized loops)
 
 but you have almost no control over it
 
@@ -150,9 +334,6 @@ but you have almost no control over it
 https://openjdk.java.net/jeps/414[]
 
 ? benchmark + hsdis ? porównać różne operacje (dzielenie ? )
-
-
-
 
 
 == thank you
