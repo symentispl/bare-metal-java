@@ -40,7 +40,7 @@ public class PosixQueueReceive {
                 try (var msg = MemorySegment.allocateNative(MSG_SIZE);
                      var msg_prio = MemorySegment.allocateNative(CLinker.C_LONG)) {
                     mqueue_h.mq_receive(queue_desc, msg, MSG_SIZE, msg_prio);
-                    out.println(format("Message received: %s", CLinker.toJavaString(msg)));
+//                    out.println(format("Message received: %s", CLinker.toJavaString(msg)));
                 }
             }
 

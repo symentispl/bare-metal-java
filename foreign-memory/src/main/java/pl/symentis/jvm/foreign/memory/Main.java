@@ -33,7 +33,7 @@ public class Main {
                 CLinker.C_INT,
                 CLinker.C_INT,
                 CLinker.C_POINTER);
-        struct.
+
 
     }
 }
