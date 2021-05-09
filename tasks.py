@@ -3,7 +3,7 @@ from invoke import task
 import os
 
 TARGET_SLIDES = "target/slides"
-REVEALJSDIR = "https://cdnjs.cloudflare.com/ajax/libs/reveal.js/3.9.2"
+REVEALJSDIR = "https://cdn.jsdelivr.net/npm/reveal.js@3.9.2"
 RESOURCES_SRC = "src/main/resources"
 SLIDES_SRC = "src/main/slides"
 

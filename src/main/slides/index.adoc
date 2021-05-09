@@ -167,7 +167,7 @@ Usability: For programs that need to access foreign memory, the API should be a 
 models a contiguous memory region with given spatial and temporal bounds,
 any access outside spatial or temporal bounds will end upt with exception
 
-[code,java]
+[source,java]
 ----
 try(var memorySegment = MemorySegment.allocateNative(1024)){
 }
@@ -175,7 +175,7 @@ try(var memorySegment = MemorySegment.allocateNative(1024)){
 
 === !
 
-[code,java]
+[source,java]
 ----
 var memorySegment = MemorySegment.allocateNative(1024))
 // lots of code
@@ -184,7 +184,7 @@ memorySegment.close(); // hi, manuall memory management
 
 === !
 
-[code,java]
+[source,java]
 ----
 var memorySegment = MemorySegment.allocateNative(1024));
 var cleaner = Cleaner.create(); //uses PhantomReferences and ReferenceQueue
@@ -207,7 +207,7 @@ any access from other threads is forbidden,
 
 you can change ownership of segment or make it shareable
 
-[code,java]
+[source,java]
 ----
 try(var memorySegment = MemorySegment.allocateNative(1024)){
     var newOwnerMemorySegment = memorySegment.handoff(otherThread);
@@ -220,13 +220,50 @@ try(var memorySegment = MemorySegment.allocateNative(1024)){
 
 === native scope
 
-[code,java]
+[quote,,Javadocs]
+A native scope is an abstraction which provides shared temporal bounds for one or more allocations, backed by off-heap memory. Native scopes can be either bounded or unbounded, depending on whether the size of the native scope is known statically. If an application knows before-hand how much memory it needs to allocate, then using a bounded native scope will typically provide better performance than independently allocating the memory for each value (e.g. using MemorySegment.allocateNative(long)), or using an unbounded native scope. For this reason, using a bounded native scope is recommended in cases where programs might need to emulate native stack allocation.
+
+=== arena allocation
+
+in short words, `NativeScope` should be used when implementing buffer pools or region based allocators.
+
+[source,java]
 ----
-try(var memorySegment = MemorySegment.allocateNative(1024)){
+try (var nativeScope = NativeScope.boundedScope(4 * 4096)) {
+    var memorySegment0 = nativeScope.allocate(4096);
+    var memorySegment1 = nativeScope.allocate(4096);
+    var memorySegment2 = nativeScope.allocate(4096);
+    var memorySegment3 = nativeScope.allocate(4096);
 }
 ----
 
 === dereferencing memory
+
+* `MemoryHandles` is based on same concepts as `VarHandle`
+* to obtain a memory access var handle, clients must start from one of the leaf methods (see varHandle(Class, ByteOrder), varHandle(Class, long, ByteOrder)).
+* This determines the variable type (all primitive types but void and boolean are supported), as well as the alignment constraint and the byte order associated to a memory access var handle.
+* The resulting memory access var handle can then be combined in various ways to emulate different addressing modes. The var handles created by this class feature a mandatory coordinate type (of type MemorySegment), and one long coordinate type, which represents the offset, in bytes, relative to the segment, at which dereference should occur.
+
+=== sounds cryptic?
+
+[source,java]
+----
+import jdk.incubator.foreign.*;
+import java.nio.ByteOrder;
+import java.lang.invoke.VarHandle;
+
+var varHandle = MemoryHandles.varHandle(int.class, ByteOrder.nativeOrder());
+varHandle.toMethodHandle(VarHandle.AccessMode.GET).type();
+// (MemorySegment,long)int
+try(var memorySegment = MemorySegment.allocateNative(1024)){
+    varHandler.get(memorySegment,0);
+}
+varHandle = MemoryHandles.insertCoordinates(varHandle, 1,4).toMethodHandle(VarHandle.AccessMode.GET).type()
+// (MemorySegment)int
+try(var memorySegment = MemorySegment.allocateNative(1024)){
+    varHandler.get(memorySegment);
+}
+----
 
 === MemoryLayout
 
@@ -236,11 +273,39 @@ a programmatic description of a memory segment's contents
 * structs
 * unions
 
-=== !
+=== C struct
 
-[code,java]
+[source,C]
 ----
+struct {
+    int value;
+    struct {
+        int year;
+        int month;
+        int day;
+    } date;
+}
 ----
+
+=== memory layout
+
+[source,java]
+----
+var cStructLayout = MemoryLayout.ofStruct(
+        CLinker.C_INT.withName("value"),
+        MemoryLayout.ofStruct(
+            CLinker.C_INT.withName("year"),
+            CLinker.C_INT.withName("month"),
+            CLinker.C_INT.withName("day")
+        ).withName("date")
+);
+
+var valueVarHandler = cStructLayout.varHandle(int.class, PathElement.groupElement("value"));
+var yearVarHandler = cStructLayout.varHandle(int.class, PathElement.groupElement("date"), PathElement.groupElement("year"));
+----
+
+=== aligment, padding and access modes
+
 
 === hello C
 
@@ -301,7 +366,7 @@ it generates Java code from C header files
 
 == vectorization
 
-[code,java]
+[source,java]
 ----
 x1=y1+z1;
 x2=y2+z2;
@@ -311,7 +376,7 @@ x4=y4+z4;
 
 === !
 
-[code,java]
+[source,java]
 ----
 [y1,y2,y3,y4]+[z1,z2,z3,z4]
 ----
@@ -342,7 +407,7 @@ JIT tries hard to recognize a patterns in you code and transform it using SIMD
 
 hint: run below code with and without -XX:-UseSuperWord
 
-[code,java]
+[source,java]
 ----
 float[] a = ...
 
@@ -353,8 +418,8 @@ for (int i = 0; i < a.length; i++) {
 
 === !
 
-http://groups.csail.mit.edu/commit/papers/00/SLP-PLDI-2000.pdf[ExploitingSuperwordLevelParallelismwithMultimediaInstructionSets]
-http://psy-lob-saw.blogspot.com/2015/04/on-arraysfill-intrinsics-superword-and.html[On Arrays.fill, Intrinsics, SuperWord and SIMD instructions]
+http://groups.csail.mit.edu/commit/papers/00/SLP-PLDI-2000.pdf[Exploiting Superword Level Parallelism with Multimedia InstructionSets] +
+http://psy-lob-saw.blogspot.com/2015/04/on-arraysfill-intrinsics-superword-and.html[On Arrays.fill, Intrinsics, SuperWord and SIMD instructions] +
 https://richardstartin.github.io/tags/vector[Richard Startin's Blog, Vectorisation]
 
 === !
@@ -451,7 +516,7 @@ To avoid an explosion of C2 intrinsics we define generalized intrinsics correspo
 
 === vector operations
 
-[code,java]
+[source,java]
 ----
 static final VectorSpecies<Float> SPECIES = FloatVector.SPECIES_PREFERRED;
 
