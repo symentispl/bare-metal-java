@@ -9,6 +9,7 @@
 :revealjs_controls: false
 :revealjs_width: 1920
 :revealjs_height: 1080
+:revealjs_plugins: src/main/slides/revealjs-plugins.js
 :imagesdir: images
 :customcss: css/custom.css
 :icons: font
@@ -170,6 +171,8 @@ any access outside spatial or temporal bounds will end upt with exception
 
 [source,java]
 ----
+import jdk.incubator.foreign.*;
+
 try(var memorySegment = MemorySegment.allocateNative(1024)){
 }
 ----
@@ -178,15 +181,18 @@ try(var memorySegment = MemorySegment.allocateNative(1024)){
 
 [source,java]
 ----
+import jdk.incubator.foreign.*;
 var memorySegment = MemorySegment.allocateNative(1024))
 // lots of code
-memorySegment.close(); // hi, manuall memory management
+memorySegment.close(); // hi, manual memory management
 ----
 
 === !
 
 [source,java]
 ----
+import jdk.incubator.foreign.*;
+import java.lang.ref.Cleaner;
 var memorySegment = MemorySegment.allocateNative(1024));
 var cleaner = Cleaner.create(); //uses PhantomReferences and ReferenceQueue
 memorySegment.registerCleaner(cleaner);
@@ -212,6 +218,8 @@ you can change ownership of segment or make it shareable
 
 [source,java]
 ----
+import jdk.incubator.foreign.*;
+
 try(var memorySegment = MemorySegment.allocateNative(1024)){
     var newOwnerMemorySegment = memorySegment.handoff(otherThread);
     // from now on, access to memorySegment is forbiden
@@ -239,6 +247,8 @@ buffer pools or region based allocators
 
 [source,java]
 ----
+import jdk.incubator.foreign.*;
+
 try (var nativeScope = NativeScope.boundedScope(4 * 4096)) {
     var memorySegment0 = nativeScope.allocate(4096);
     var memorySegment1 = nativeScope.allocate(4096);
@@ -267,12 +277,13 @@ var varHandle = MemoryHandles.varHandle(int.class, ByteOrder.nativeOrder());
 varHandle.toMethodHandle(VarHandle.AccessMode.GET).type();
 // (MemorySegment,long)int
 try(var memorySegment = MemorySegment.allocateNative(1024)){
-    varHandler.get(memorySegment,0);
+    varHandle.get(memorySegment,0);
 }
-varHandle = MemoryHandles.insertCoordinates(varHandle, 1,4).toMethodHandle(VarHandle.AccessMode.GET).type()
+varHandle = MemoryHandles.insertCoordinates(varHandle, 1,4);
+varHandle.toMethodHandle(VarHandle.AccessMode.GET).type();
 // (MemorySegment)int
 try(var memorySegment = MemorySegment.allocateNative(1024)){
-    varHandler.get(memorySegment);
+    varHandle.get(memorySegment);
 }
 ----
 
@@ -302,6 +313,8 @@ struct {
 
 [source,java]
 ----
+import jdk.incubator.foreign.*;
+
 var cStructLayout = MemoryLayout.ofStruct(
         CLinker.C_INT.withName("value"),
         MemoryLayout.ofStruct(
@@ -691,5 +704,11 @@ then use Vector API +
 
 [quote,,JEP 414]
 it seems that auto-vectorization of scalar code is not a reliable tactic for optimizing ad-hoc user-written loops unless the user pays unusually careful attention to unwritten contracts about exactly which loops a compiler is prepared to auto-vectorize. It is too easy to write a loop that fails to auto-vectorize, for a reason that no human reader can detect. Years of work on auto-vectorization, even in HotSpot, have left us with lots of optimization machinery that works only on special occasions. We want to enjoy the use of this machinery more often!
+
+=== what's next?
+
+* frozen arrays
+* primitive objects (part of Valhalla)
+* low-level concurrency controls (VarHandles)
 
 == thank you

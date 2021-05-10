@@ -10,6 +10,8 @@ SLIDES_SRC = "src/main/slides"
 
 @task
 def init(c):
+    o = c.run("asciidoctor-revealjs -V");
+    print(o)
     if not c.run("asciidoctor-revealjs -V"):
         print("Asciidoctor RevealJS is not installed, fix it with: gem install asciidoctor-revealjs")
     if not os.path.isdir(f"{TARGET_SLIDES}"):

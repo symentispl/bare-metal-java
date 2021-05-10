@@ -2,9 +2,7 @@ package pl.symentis.jvm.foreign.memory;
 
 import jdk.incubator.foreign.*;
 
-import java.lang.invoke.VarHandle;
 import java.lang.ref.Cleaner;
-import java.nio.ByteOrder;
 
 public class Main {
 
@@ -35,19 +33,6 @@ public class Main {
                 CLinker.C_INT,
                 CLinker.C_INT,
                 CLinker.C_POINTER);
-
-
     }
 
-    public void dereferrncingMemory() {
-
-        var varHandle = MemoryHandles.varHandle(int.class, ByteOrder.nativeOrder());
-        varHandle.toMethodHandle(VarHandle.AccessMode.GET).type();
-
-
-
-        try (var memorySegment = MemorySegment.allocateNative(1024)) {
-            Memo
-        }        
-    }
 }
