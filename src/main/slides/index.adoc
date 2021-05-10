@@ -29,8 +29,7 @@ godfather of Programistyczna Grupa Rozwoju
 == DISCLAIMER
 
 this presentation may contain strong language, +
-my own opinions, references
-to sex, drugs, religion, alcohol and politics
+my own opinions, references to sex, drugs, religion, alcohol and politics
 
 if this does make you feel offended +
 that's good it means you have something you care about in your life
@@ -55,7 +54,8 @@ all the hard things
 
 === why?
 
-to give up control for safety
+to give up control for safety +
+(it is not the only reason)
 
 === !
 
@@ -71,7 +71,7 @@ you loose a lot of opportunities to optimize your code +
 
 == Java as a system's language?
 
-stupid idea!
+stupid idea! +
 (especially when management of resources is critical)
 
 === !
@@ -113,20 +113,21 @@ internal API abused beyond creators imagination
 * foreign memory
 * foreign linker
 * vectorization
-* frozen arrays, i całą seria optymalizacji, która za tym idzie
-* primitive objects (i projekt Valhalla)
-* low-level concurrency controls
+* frozen arrays
+* primitive objects (part of Valhalla)
+* low-level concurrency controls (VarHandles)
 
-== malloc baby
+== malloc, baby
 
 === DirectByteBuffer
 
-freeing unused memory (famous Cleaner)
+freeing unused memory when no longer referenced +
 inefficient under pressure
 
 === Unsafe.allocateMemory
 
-breaks memory safety guarantees, not official API,
+breaks memory safety guarantees, +
+not official API,
 
 === JNI
 
@@ -139,7 +140,7 @@ breaks memory safety guarantees, not official API,
 === goals
 
 [quote,,JEP 393]
-Generality: A single API should be able to operate on various kinds of foreign memory (e.g., native memory,     persistent memory, managed heap memory, etc.).
+Generality: A single API should be able to operate on various kinds of foreign memory (e.g., native memory, persistent memory, managed heap memory, etc.).
 
 === goals
 
@@ -164,7 +165,7 @@ Usability: For programs that need to access foreign memory, the API should be a 
 
 === MemorySegment
 
-models a contiguous memory region with given spatial and temporal bounds,
+models a contiguous memory region with given spatial and temporal bounds, +
 any access outside spatial or temporal bounds will end upt with exception
 
 [source,java]
@@ -202,10 +203,12 @@ memory segment can be:
 
 === thread confinement
 
-by default, memory segments are confined to thread it created,
+by default, memory segments are confined to thread it created, +
 any access from other threads is forbidden,
 
 you can change ownership of segment or make it shareable
+
+=== !
 
 [source,java]
 ----
@@ -221,11 +224,18 @@ try(var memorySegment = MemorySegment.allocateNative(1024)){
 === native scope
 
 [quote,,Javadocs]
-A native scope is an abstraction which provides shared temporal bounds for one or more allocations, backed by off-heap memory. Native scopes can be either bounded or unbounded, depending on whether the size of the native scope is known statically. If an application knows before-hand how much memory it needs to allocate, then using a bounded native scope will typically provide better performance than independently allocating the memory for each value (e.g. using MemorySegment.allocateNative(long)), or using an unbounded native scope. For this reason, using a bounded native scope is recommended in cases where programs might need to emulate native stack allocation.
+A native scope is an abstraction which provides shared temporal bounds for one or more allocations, backed by off-heap memory.
+Native scopes can be either bounded or unbounded, depending on whether the size of the native scope is known statically.
+If an application knows before-hand how much memory it needs to allocate, then using a bounded native scope will typically provide better performance than independently allocating the memory for each value (e.g. using MemorySegment.allocateNative(long)), or using an unbounded native scope.
+For this reason, using a bounded native scope is recommended in cases where programs might need to emulate native stack allocation.
 
 === arena allocation
 
-in short words, `NativeScope` should be used when implementing buffer pools or region based allocators.
+in short words, +
+`NativeScope` could be used when implementing +
+buffer pools or region based allocators
+
+=== !
 
 [source,java]
 ----
@@ -241,8 +251,9 @@ try (var nativeScope = NativeScope.boundedScope(4 * 4096)) {
 
 * `MemoryHandles` is based on same concepts as `VarHandle`
 * to obtain a memory access var handle, clients must start from one of the leaf methods (see varHandle(Class, ByteOrder), varHandle(Class, long, ByteOrder)).
-* This determines the variable type (all primitive types but void and boolean are supported), as well as the alignment constraint and the byte order associated to a memory access var handle.
-* The resulting memory access var handle can then be combined in various ways to emulate different addressing modes. The var handles created by this class feature a mandatory coordinate type (of type MemorySegment), and one long coordinate type, which represents the offset, in bytes, relative to the segment, at which dereference should occur.
+* This determines the variable type (all primitive types but void and boolean are supported), as well as the alignment constraint, and the byte order associated to a memory access var handle.
+* The resulting memory access var handle can then be combined in various ways to emulate different addressing modes.
+The var handles created by this class feature a mandatory coordinate type (of type MemorySegment), and one long coordinate type, which represents the offset, in bytes, relative to the segment, at which dereference should occur.
 
 === sounds cryptic?
 
@@ -304,14 +315,48 @@ var valueVarHandler = cStructLayout.varHandle(int.class, PathElement.groupElemen
 var yearVarHandler = cStructLayout.varHandle(int.class, PathElement.groupElement("date"), PathElement.groupElement("year"));
 ----
 
-=== aligment, padding and access modes
+=== alignment, padding and access modes
 
+* data structure alignment, unaligned access will throw exception,
+* memory layout supports padding,
+* var handles on memory segments can use `MemoryAccess` modes (atomic, volatile, acquire-get)
+
+=== unchecked segments
+
+[quote,,JEP 393]
+Dereference operations are only possible on memory segments.
+Since a memory segment has spatial and temporal bounds, the runtime can always ensure that memory associated with a given segment is dereferenced safely.
+
+=== !
+
+*Since a memory segment has spatial and temporal bounds, the runtime can always ensure that memory associated with a given segment is dereferenced safely*
+
+=== !
+
+what if dont' have `MemorySegment` but just a `MemoryAddress`? +
+(like in examples in section to follow)
+
+=== !
+
+* if memory adress fails into spatial bounds of existing memory segment, you can perform rebase operation,
+`MemoryAddress::segmentOffset`
+* otherwise, call `MemoryAddress::asSegmentRestricted` (unsafe operation), requires consent from user ;)
+* set JDK property, `foreign.restricted`
+** `deny` — issues a runtime exception on each restricted call (this is the default value);
+** `permit` — allows restricted calls;
+** `warn` — like permit, but also prints a one-line warning on each restricted call; and
+** `debug` — like permit, but also dumps the stack corresponding to any given restricted call.
+
+[role=highlight_section_title]
+=== demo
+
+image::pexels-web-donut-19101.jpg[background]
 
 === hello C
 
 * JNI, old, slow, hard to implement,no major improvements since release,
 * and collection of JNI wrappers,
-** https://github.com/java-native-access/jna[JNA], open source JNI wrapper,
+** https://github.com/java-native-access/jna[JNA]
 ** https://github.com/jnr/jnr-ffi[jnr-ffi]
 ** https://github.com/bytedeco/javacpp[JavaCPP]
 ** https://github.com/jmarranz/jnieasy[JNIEasy]
@@ -353,16 +398,74 @@ Performance: The Foreign Linker API should provide performance that is comparabl
 * LibraryLookup
 * FunctionDescriptor
 
+=== downcalls
+
+[source,java]
+----
+import jdk.incubator.foreign.CLinker;
+import jdk.incubator.foreign.FunctionDescriptor;
+import jdk.incubator.foreign.LibraryLookup;
+import java.lang.invoke.MethodType;
+
+var libraryLookup = LibraryLookup.ofDefault();
+
+var getpidSymbol = libraryLookup.lookup("getpid")
+        .orElseThrow(() -> new RuntimeException("getpid symbol not found"));
+
+var functionDescriptor = FunctionDescriptor.of(CLinker.C_INT);
+var methodType = MethodType.methodType(int.class);
+var methodHandle = CLinker.getInstance().downcallHandle(getpidSymbol, methodType, functionDescriptor);
+System.out.println(methodHandle.invoke());
+----
+
+=== upcalls
+
+[source,java]
+----
+import jdk.incubator.foreign.CLinker;
+import jdk.incubator.foreign.FunctionDescriptor;
+import jdk.incubator.foreign.LibraryLookup;
+import jdk.incubator.foreign.MemoryAddress;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import static java.lang.System.out;
+
+var libraryLookup = LibraryLookup.ofDefault();
+
+var cLinker = CLinker.getInstance();
+
+out.println("creating signal handler stub");
+var signalHandler = MethodHandles.lookup()
+        .findStatic(SIGTERM.class, "onSignal", MethodType.methodType(void.class, int.class));
+var signalHandlerStub = cLinker.upcallStub(signalHandler, FunctionDescriptor.ofVoid(CLinker.C_INT));
+
+out.println("installing signal handler " + signalHandlerStub);
+var signal = libraryLookup.lookup("signal")
+        .orElseThrow(() -> new RuntimeException("signal symbol not found"));
+var signalHandle = cLinker.downcallHandle(signal,
+        MethodType.methodType(void.class, int.class, MemoryAddress.class),
+        FunctionDescriptor.ofVoid(CLinker.C_INT, CLinker.C_POINTER));
+signalHandle.invoke(15, signalHandlerStub.address());
+----
+
+=== !
+
+image::https://media.giphy.com/media/plcoWBSrPvOP6/giphy.gif[background]
+
 === too much magic
 
 panama early access builds contain a real gem
+
+https://jdk.java.net/panama/[]
 
 === jextract
 
 it generates Java code from C header files
 
+[role=highlight_section_title]
 === demo
 
+image::pexels-web-donut-19101.jpg[background]
 
 == vectorization
 
@@ -425,7 +528,8 @@ https://richardstartin.github.io/tags/vector[Richard Startin's Blog, Vectorisati
 === !
 
 [quote,Richard Starin,Vectorised Algorithms in Java]
-Because AVX can reduce the processor frequency, it’s not always profitable to vectorise, so compilers employ cost models to decide when they should do so. Such cost models require platform specific calibration, and sometimes C2 can get it wrong
+Because AVX can reduce the processor frequency, it’s not always profitable to vectorise, so compilers employ cost models to decide when they should do so.
+Such cost models require platform specific calibration, and sometimes C2 can get it wrong
 
 === vector api
 
@@ -433,19 +537,26 @@ https://openjdk.java.net/jeps/414[JEP 414: Vector API (Second Incubator)]
 
 === goals
 
-Clear and concise API — The API should be capable of clearly and concisely expressing a wide range of vector computations consisting of sequences of vector operations composed within loops and possibly with control flow. It should be possible to express a computation that is generic with respect to vector size, or the number of lanes per vector, thus enabling such computations to be portable across hardware supporting different vector sizes
+Clear and concise API — The API should be capable of clearly and concisely expressing a wide range of vector computations consisting of sequences of vector operations composed within loops and possibly with control flow.
+It should be possible to express a computation that is generic with respect to vector size, or the number of lanes per vector, thus enabling such computations to be portable across hardware supporting different vector sizes
 
 === goals
 
-Platform agnostic — The API should be CPU architecture agnostic, enabling implementations on multiple architectures supporting vector instructions. As is usual in Java APIs, where platform optimization and portability conflict then the bias will be toward making the API portable, even if that results in some platform-specific idioms not being expressible in portable code.
+Platform agnostic — The API should be CPU architecture agnostic, enabling implementations on multiple architectures supporting vector instructions.
+As is usual in Java APIs, where platform optimization and portability conflict then the bias will be toward making the API portable, even if that results in some platform-specific idioms not being expressible in portable code.
 
 === goals
 
-Reliable runtime compilation and performance on x64 and AArch64 architectures — On capable x64 architectures the Java runtime, specifically the HotSpot C2 compiler, should compile vector operations to corresponding efficient and performant vector instructions, such as those supported by Streaming SIMD Extensions (SSE) and Advanced Vector Extensions (AVX). Developers should have confidence that the vector operations they express will reliably map closely to relevant vector instructions. On capable ARM AArch64 architectures C2 will, similarly, compile vector operations to the vector instructions supported by NEON.
+Reliable runtime compilation and performance on x64 and AArch64 architectures — On capable x64 architectures the Java runtime, specifically the HotSpot C2 compiler, should compile vector operations to corresponding efficient and performant vector instructions, such as those supported by Streaming SIMD Extensions (SSE) and Advanced Vector Extensions (AVX).
+Developers should have confidence that the vector operations they express will reliably map closely to relevant vector instructions.
+On capable ARM AArch64 architectures C2 will, similarly, compile vector operations to the vector instructions supported by NEON.
 
 === goals
 
-Graceful degradation — Sometimes a vector computation cannot be fully expressed at runtime as a sequence of vector instructions, perhaps because the architecture does not support some of the required instructions. In such cases the Vector API implementation should degrade gracefully and still function. This may involve issuing warnings if a vector computation cannot be efficiently compiled to vector instructions. On platforms without vectors, graceful degradation will yield code competitive with manually-unrolled loops, where the unroll factor is the number of lanes in the selected vector.
+Graceful degradation — Sometimes a vector computation cannot be fully expressed at runtime as a sequence of vector instructions, perhaps because the architecture does not support some of the required instructions.
+In such cases the Vector API implementation should degrade gracefully and still function.
+This may involve issuing warnings if a vector computation cannot be efficiently compiled to vector instructions.
+On platforms without vectors, graceful degradation will yield code competitive with manually-unrolled loops, where the unroll factor is the number of lanes in the selected vector.
 
 === core concepts
 
@@ -480,7 +591,9 @@ vector1
 === !
 
 [quote,,JEP 414]
-A lane-wise operation applies a scalar operator, such as addition, to each lane of one or more vectors in parallel. A lane-wise operation usually, but not always, produces a vector of the same length and shape. Lane-wise operations are further classified as unary, binary, ternary, test, or conversion operations.
+A lane-wise operation applies a scalar operator, such as addition, to each lane of one or more vectors in parallel.
+A lane-wise operation usually, but not always, produces a vector of the same length and shape.
+Lane-wise operations are further classified as unary, binary, ternary, test, or conversion operations.
 
 === cross lane operation
 
@@ -497,22 +610,28 @@ A lane-wise operation applies a scalar operator, such as addition, to each lane 
 === !
 
 [quote,,JEP 414]
-A cross-lane operation applies an operation across an entire vector. A cross-lane operation produces either a scalar or a vector of possibly a different shape. Cross-lane operations are further classified as permutation or reduction operations.
+A cross-lane operation applies an operation across an entire vector.
+A cross-lane operation produces either a scalar or a vector of possibly a different shape.
+Cross-lane operations are further classified as permutation or reduction operations.
 
 === vector shapes
 
 [quote,,JEP 414]
-The shape of a vector governs how an instance of Vector<E> is mapped to a hardware vector register when vector computations are compiled by the HotSpot C2 compiler. The length of a vector, i.e., the number of lanes or elements, is the vector size divided by the element size.
+The shape of a vector governs how an instance of Vector<E> is mapped to a hardware vector register when vector computations are compiled by the HotSpot C2 compiler.
+The length of a vector, i.e., the number of lanes or elements, is the vector size divided by the element size.
 
 === at runtime
 
 [quote,,JEP 414]
-The Vector API has two implementations. The first implements operations in Java, thus it is functional but not optimal. The second defines intrinsic vector operations for the HotSpot C2 run-time compiler so that it can compile vector computations to appropriate hardware registers and vector instructions when available.
+The Vector API has two implementations.
+The first implements operations in Java, thus it is functional but not optimal.
+The second defines intrinsic vector operations for the HotSpot C2 run-time compiler so that it can compile vector computations to appropriate hardware registers and vector instructions when available.
 
 === !
 
 [quote,,JEP 414]
-To avoid an explosion of C2 intrinsics we define generalized intrinsics corresponding to the various kinds of operations such as unary, binary, conversion, and so on, which take a parameter describing the specific operation to be performed. Approximately twenty new intrinsics support the intrinsification of the entire API.
+To avoid an explosion of C2 intrinsics we define generalized intrinsics corresponding to the various kinds of operations such as unary, binary, conversion, and so on, which take a parameter describing the specific operation to be performed.
+Approximately twenty new intrinsics support the intrinsification of the entire API.
 
 === vector operations
 
@@ -547,7 +666,10 @@ This implementation achieves optimal performance on large arrays.
 
 === you may ask yourself how large?
 
+[role=highlight_section_title]
 === demo
+
+image::pexels-web-donut-19101.jpg[background]
 
 === !
 
@@ -555,13 +677,19 @@ if it doesn't make sens, your not alone
 
 === !
 
-* no, it is not because there are allocations
+* no, it is not because there are allocations (scalar replacement, not sure)
 * this code is heavily inlined with `@ForceInline`
 * looks like generated intrinsics are not optimal (yet)
 
 === why bother?
 
-C2 will not always recognize your code as _vectorizable_, then
-use Vector API (first measure, profile, adapt)
+C2 will not always recognize your code as _vectorizable_, +
+then use Vector API +
+(first measure, profile, adapt)
+
+=== !
+
+[quote,,JEP 414]
+it seems that auto-vectorization of scalar code is not a reliable tactic for optimizing ad-hoc user-written loops unless the user pays unusually careful attention to unwritten contracts about exactly which loops a compiler is prepared to auto-vectorize. It is too easy to write a loop that fails to auto-vectorize, for a reason that no human reader can detect. Years of work on auto-vectorization, even in HotSpot, have left us with lots of optimization machinery that works only on special occasions. We want to enjoy the use of this machinery more often!
 
 == thank you
