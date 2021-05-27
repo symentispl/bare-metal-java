@@ -25,7 +25,7 @@ public class PosixQueueReceiver {
             var queue_desc = mqueue_h.mq_open(mqueue_name,
                     mqueue_h.O_RDWR() | mqueue_h.O_CREAT(),
                     0664, // permission of queue
-                    mq_attr.address()); // additional attributes
+                    0); // additional attributes
 
             if (queue_desc == -1) {
                 int errno = errno();

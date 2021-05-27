@@ -21,7 +21,7 @@
                 <version>1.6.0</version>
                 <executions>
                     <execution>
-                        <id>jextract-sdl2</id>
+                        <id>jextract-mqueue_h</id>
                         <phase>generate-sources</phase>
                         <goals>
                             <goal>exec</goal>
@@ -32,7 +32,7 @@
                         </configuration>
                     </execution>
                     <execution>
-                        <id>jextract-errno</id>
+                        <id>jextract-errno_h</id>
                         <phase>generate-sources</phase>
                         <goals>
                             <goal>exec</goal>

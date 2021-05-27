@@ -86,11 +86,13 @@ Apache BigData Ecosystem
 
 === are these people stupid or?
 
-crazy?
+=== !
+
+image::https://media.giphy.com/media/XoWvzO2gYjqpUrjCRl/giphy.gif[background,size=contain]
 
 === !
 
-no
+*NO*
 
 safety is more important than speed
 
@@ -131,6 +133,8 @@ breaks memory safety guarantees, +
 not official API,
 
 === JNI
+
+image::https://media.giphy.com/media/yvBAuESRTsETqNFlEl/giphy.gif[background]
 
 === it takes three
 
