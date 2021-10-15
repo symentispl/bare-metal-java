@@ -13,7 +13,15 @@
 :imagesdir: images
 :customcss: css/custom.css
 :icons: font
-:title-slide-background-image: pexels-pixabay-327049.jpg
+
+== !
+
+image::16-30jaroslawpalka.png[background]
+
+[role=highlight_section_title]
+== Bare metal java
+
+image::pexels-pixabay-327049.jpg[background]
 
 == about me
 
@@ -34,6 +42,14 @@ my own opinions, references to sex, drugs, religion, alcohol and politics
 
 if this does make you feel offended +
 that's good it means you have something you care about in your life
+
+
+=== agenda
+
+<<the_raise_and_fall_on_managed_runtime,a sip of history>> +
+<<malloc_baby,malloc, baby!>> +
+<<hello_c,hello, C!>>
+
 
 == the raise and fall on managed runtime
 

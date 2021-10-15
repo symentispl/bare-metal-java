@@ -21,7 +21,8 @@ public class SIGTERM {
         var signalHandler = MethodHandles.lookup()
                 .findStatic(SIGTERM.class, "onSignal",
                         MethodType.methodType(void.class, int.class));
-        var signalHandlerStub = cLinker.upcallStub(signalHandler, FunctionDescriptor.ofVoid(CLinker.C_INT));
+        var signalHandlerStub = cLinker.upcallStub(signalHandler,
+                FunctionDescriptor.ofVoid(CLinker.C_INT));
 
         out.println("installing signal handler " + signalHandlerStub);
         var signal = libraryLookup.lookup("signal")
