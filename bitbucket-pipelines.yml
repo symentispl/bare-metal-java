@@ -1,11 +1,18 @@
-image: gradle:7.0.2
-
 pipelines:
   default:
     - parallel:
       - step:
-          name: Build and Test
+          name: Build slides
+          image: gradle:7.0.2
           caches:
             - gradle
           script:
             - gradle asciidoctorRevealJs
+      - step:
+          name: Build foreign memory
+          image: maven:3.8.4-openjdk-17
+          caches:
+            - maven
+          script:
+            - cd foreign-memory
+            - mvn verify
