@@ -16,7 +16,8 @@ public class GetPIDExample {
 
         var functionDescriptor = FunctionDescriptor.of(CLinker.C_INT);
         var methodType = MethodType.methodType(int.class);
-        var methodHandle = CLinker.getInstance().downcallHandle(getpidSymbol,
+        var methodHandle = CLinker.getInstance()
+                .downcallHandle(getpidSymbol,
                 methodType,
                 functionDescriptor);
         System.out.println(methodHandle.invoke());;
