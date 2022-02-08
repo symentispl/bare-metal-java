@@ -7,7 +7,6 @@ import org.openjdk.jmh.infra.Blackhole;
 
 import java.util.random.RandomGenerator;
 
-
 @Fork(
         jvmArgsAppend = {
                 "--add-modules", "jdk.incubator.vector"
