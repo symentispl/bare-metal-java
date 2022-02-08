@@ -9,10 +9,18 @@ pipelines:
           script:
             - gradle asciidoctorRevealJs
       - step:
-          name: Build foreign memory
+          name: Build foreign memory examples
           image: maven:3.8.4-openjdk-17
           caches:
             - maven
           script:
             - cd foreign-memory
+            - mvn verify
+      - step:
+          name: Build foreign linker examples
+          image: maven:3.8.4-openjdk-17
+          caches:
+            - maven
+          script:
+            - cd foreign-linker
             - mvn verify
