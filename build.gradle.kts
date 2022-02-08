@@ -1,34 +1,47 @@
+import com.github.jrubygradle.api.core.RepositoryHandlerExtension
+import java.io.FileNotFoundException
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
+import java.nio.file.StandardCopyOption
+
 plugins {
-    id("org.asciidoctor.jvm.convert") version "3.3.0"
-    id("org.asciidoctor.jvm.gems") version "3.3.0"
+    id("org.asciidoctor.jvm.revealjs") version "3.3.2"
+    id("org.asciidoctor.jvm.gems") version "3.3.2"
+    id("org.kordamp.gradle.livereload") version "0.4.0"
 }
 
 repositories {
     gradlePluginPortal()
+    // https://github.com/jruby-gradle/jruby-gradle-plugin/issues/407
+    this as ExtensionAware
+    the<RepositoryHandlerExtension>().gems()
 }
 
 dependencies {
-    asciidoctorGems("rubygems:asciidoctor-revealjs:4.1.0")
+    dependencies {
+        asciidoctorGems("rubygems:asciidoctor-revealjs:4.1.0")
+    }
 }
 
-
-val TARGET_SLIDES = "target/slides"
-val REVEALJSDIR = "https://cdn.jsdelivr.net/npm/reveal.js@3.9.2"
-val RESOURCES_SRC = "src/main/resources"
-val SLIDES_SRC = "src/main/slides"
-
-task<Copy>("copySlidesResources") {
-    description = "copy slides resource"
-    from(RESOURCES_SRC)
-    into(TARGET_SLIDES)
+tasks.asciidoctorRevealJs {
+    sourceDir("src/main/slides")
+    sources {
+        include("index.adoc")
+    }
+    setOutputDir("build/slides")
+    resources {
+        from("src/main/resources") {
+            include("**")
+        }
+    }
+    asciidoctorj {
+        modules {
+            diagram.setVersion("2.2.1")
+        }
+    }
 }
 
-task<Exec>("buildSlides") {
-    description = "builds slides"
-    dependsOn("copySlidesResources")
-    commandLine("asciidoctor-revealjs",
-            "-a", "revealjsdir=$REVEALJSDIR",
-            "-r", "asciidoctor-diagram",
-            "-D", TARGET_SLIDES,
-            "$SLIDES_SRC/*.adoc")
+tasks.liveReload {
+    setDocRoot(tasks.asciidoctorRevealJs.get().outputDir.absolutePath)
 }
