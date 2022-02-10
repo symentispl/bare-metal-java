@@ -14,10 +14,6 @@
 :customcss: css/custom.css
 :icons: font
 
-== !
-
-image::16-30jaroslawpalka.png[background]
-
 [role=highlight_section_title]
 == Bare metal java
 
@@ -27,7 +23,7 @@ image::pexels-pixabay-327049.jpg[background]
 
 Jarek Pałka (@j_palka)
 
-Neo4j (a graph database) performance engineer/team lead
+Neo4j (a graph database) staff engineer/team lead/benchmarking team
 
 over 20 years with JVM ( and people) +
 speaker, coder, architect
@@ -49,7 +45,6 @@ that's good it means you have something you care about in your life
 <<the_raise_and_fall_on_managed_runtime,a sip of history>> +
 <<malloc_baby,malloc, baby!>> +
 <<hello_c,hello, C!>>
-
 
 == the raise and fall on managed runtime
 
@@ -152,35 +147,49 @@ not official API,
 
 image::https://media.giphy.com/media/yvBAuESRTsETqNFlEl/giphy.gif[background]
 
-=== it takes three
+=== it takes four
 
 * first proposed by JEP 370 and targeted to Java 14
 * and later re-incubated by JEP 383 which was targeted to Java 15
-* third proposal https://openjdk.java.net/jeps/393[JEP 393] released with Java 16
+* third proposal https://openjdk.java.net/jeps/393[JEP 393: Foreign-Memory Access API (Third Incubator)] released with Java 16
+* fourth proposal https://openjdk.java.net/jeps/412[JEP 412: Foreign Function & Memory API (Incubator)] (merge of two JEPs, but more about it later)
 
 === goals
 
-[quote,,JEP 393]
+[quote,,JEP 412]
 Generality: A single API should be able to operate on various kinds of foreign memory (e.g., native memory, persistent memory, managed heap memory, etc.).
 
 === goals
 
-[quote,,JEP 393]
+[quote,,JEP 412]
 Safety: It should not be possible for the API to undermine the safety of the JVM, regardless of the kind of memory being operated upon.
 
 === goals
 
-[quote,,JEP 393]
+[quote,,JEP 412]
 Control: Clients should have options as to how memory segments are to be deallocated: either explicitly (via a method call) or implicitly (when the segment is no longer in use).
 
 === goals
 
-[quote,,JEP 393]
+[quote,,JEP 412]
 Usability: For programs that need to access foreign memory, the API should be a compelling alternative to legacy Java APIs such as sun.misc.Unsafe.
 
-=== concepts
+=== motivation
 
-* MemorySegment
+[quote,,JEP 412]
+Many Java programs access foreign memory, such as Ignite, mapDB, memcached, Lucene, and Netty's ByteBuf API.
+
+=== !
+
+By doing so they can:
+
+* Avoid the cost and unpredictability associated with garbage collection (especially when maintaining large caches);
+* Share memory across multiple processes; and
+* Serialize and deserialize memory content by mapping files into memory (via, e.g., mmap).
+
+=== The Foreign-Memory Access API
+
+* MemorySegment & ResourceScope
 * MemoryAddress
 * MemoryLayout
 
@@ -193,7 +202,8 @@ any access outside spatial or temporal bounds will end upt with exception
 ----
 import jdk.incubator.foreign.*;
 
-try(var memorySegment = MemorySegment.allocateNative(1024)){
+try (var resourceScope = ResourceScope.newConfinedScope()) {
+    var memorySegment = MemorySegment.allocateNative(1024, resourceScope);
 }
 ----
 
@@ -202,9 +212,10 @@ try(var memorySegment = MemorySegment.allocateNative(1024)){
 [source,java]
 ----
 import jdk.incubator.foreign.*;
-var memorySegment = MemorySegment.allocateNative(1024))
-// lots of code
-memorySegment.close(); // hi, manual memory management
+
+var resourceScope = ResourceScope.newImplicitScope();
+var memorySegment = MemorySegment.allocateNative(1024, resourceScope);
+resourceScope.close(); // hi, manual memory management
 ----
 
 === !
@@ -213,9 +224,10 @@ memorySegment.close(); // hi, manual memory management
 ----
 import jdk.incubator.foreign.*;
 import java.lang.ref.Cleaner;
-var memorySegment = MemorySegment.allocateNative(1024));
+
 var cleaner = Cleaner.create(); //uses PhantomReferences and ReferenceQueue
-memorySegment.registerCleaner(cleaner);
+var resourceScope = ResourceScope.newImplicitScope(cleaner);
+var memorySegment = MemorySegment.allocateNative(1024)); // GC will cleanup this segment
 ----
 
 === !
@@ -229,61 +241,20 @@ memory segment can be:
 
 === thread confinement
 
-by default, memory segments are confined to thread it created, +
+if you use _confined or implicit scope_, +
+memory segments are confined to thread it created, +
 any access from other threads is forbidden,
 
-you can change ownership of segment or make it shareable
-
-=== !
-
-[source,java]
-----
-import jdk.incubator.foreign.*;
-
-try(var memorySegment = MemorySegment.allocateNative(1024)){
-    var newOwnerMemorySegment = memorySegment.handoff(otherThread);
-    // from now on, access to memorySegment is forbiden
-    var sharedMemorySegment = newOwnerMemorySegment.share();
-    // now you can share segment between threads,
-    //they still point to same memory address
-}
-----
-
-=== native scope
-
-[quote,,Javadocs]
-A native scope is an abstraction which provides shared temporal bounds for one or more allocations, backed by off-heap memory.
-Native scopes can be either bounded or unbounded, depending on whether the size of the native scope is known statically.
-If an application knows before-hand how much memory it needs to allocate, then using a bounded native scope will typically provide better performance than independently allocating the memory for each value (e.g. using MemorySegment.allocateNative(long)), or using an unbounded native scope.
-For this reason, using a bounded native scope is recommended in cases where programs might need to emulate native stack allocation.
-
-=== arena allocation
-
-in short words, +
-`NativeScope` could be used when implementing +
-buffer pools or region based allocators
-
-=== !
-
-[source,java]
-----
-import jdk.incubator.foreign.*;
-
-try (var nativeScope = NativeScope.boundedScope(4 * 4096)) {
-    var memorySegment0 = nativeScope.allocate(4096);
-    var memorySegment1 = nativeScope.allocate(4096);
-    var memorySegment2 = nativeScope.allocate(4096);
-    var memorySegment3 = nativeScope.allocate(4096);
-}
-----
+you can use _shared scope_ to make segment shareable between threads
 
 === dereferencing memory
 
 * `MemoryHandles` is based on same concepts as `VarHandle`
-* to obtain a memory access var handle, clients must start from one of the leaf methods (see varHandle(Class, ByteOrder), varHandle(Class, long, ByteOrder)).
+* to obtain a memory access var handle, clients must start from `MemoryLayout.varHandle(Class<?> carrier, PathElement... elements)` or 'MemoryHandles.varHandle(Class<?> carrier, ByteOrder byteOrder)' or `MemoryHandles.varHandle(Class<?> carrier, long alignmentBytes, ByteOrder byteOrder)`
 * This determines the variable type (all primitive types but void and boolean are supported), as well as the alignment constraint, and the byte order associated to a memory access var handle.
+* `carrier` type is _primitive_ type which will carry value of memory segment
 * The resulting memory access var handle can then be combined in various ways to emulate different addressing modes.
-The var handles created by this class feature a mandatory coordinate type (of type MemorySegment), and one long coordinate type, which represents the offset, in bytes, relative to the segment, at which dereference should occur.
+* The var handles created by this class feature a mandatory coordinate type (of type MemorySegment), and one long coordinate type, which represents the offset, in bytes, relative to the segment, at which dereference should occur.
 
 === sounds cryptic?
 
@@ -293,19 +264,30 @@ import jdk.incubator.foreign.*;
 import java.nio.ByteOrder;
 import java.lang.invoke.VarHandle;
 
-var varHandle = MemoryHandles.varHandle(int.class, ByteOrder.nativeOrder());
-varHandle.toMethodHandle(VarHandle.AccessMode.GET).type();
-// (MemorySegment,long)int
-try(var memorySegment = MemorySegment.allocateNative(1024)){
-    varHandle.get(memorySegment,0);
-}
-varHandle = MemoryHandles.insertCoordinates(varHandle, 1,4);
-varHandle.toMethodHandle(VarHandle.AccessMode.GET).type();
-// (MemorySegment)int
-try(var memorySegment = MemorySegment.allocateNative(1024)){
-    varHandle.get(memorySegment);
+var varHandleGet = MemoryHandles.varHandle(int.class, ByteOrder.nativeOrder());
+out.println("Var handle for GET access mode: " + varHandleGet.toMethodHandle(VarHandle.AccessMode.GET).type());
+
+var varHandleSet = MemoryHandles.varHandle(int.class, ByteOrder.nativeOrder());
+out.println("Var handle for SET access mode: " + varHandleSet.toMethodHandle(VarHandle.AccessMode.SET).type());
+
+try (var resourceScope = ResourceScope.newConfinedScope()) {
+    var memorySegment = MemorySegment.allocateNative(1024, resourceScope);
+    var offset = 512;
+    var value = 2048;
+    varHandleGet.set(memorySegment, offset, value);
+
+    out.println("value = " + varHandleGet.get(memorySegment, offset));
+
+    var varHandle = MemoryHandles.insertCoordinates(varHandleGet, 1, offset);
+    out.println("modified var handle for GET access mode" + varHandle.toMethodHandle(VarHandle.AccessMode.GET).type());
+    out.println("value = " + varHandle.get(memorySegment));
 }
 ----
+
+=== !
+
+[quote,,JEP-412]
+To make the FFM API more approachable, the MemoryAccess class provides static accessors to dereference memory segments without the need to construct memory-access var handles.
 
 === MemoryLayout
 
@@ -335,34 +317,39 @@ struct {
 ----
 import jdk.incubator.foreign.*;
 
-var cStructLayout = MemoryLayout.ofStruct(
-        CLinker.C_INT.withName("value"),
-        MemoryLayout.ofStruct(
-            CLinker.C_INT.withName("year"),
-            CLinker.C_INT.withName("month"),
-            CLinker.C_INT.withName("day")
-        ).withName("date")
-);
+ var struct = MemoryLayout.structLayout(
+                CLinker.C_INT.withName("age"),
+                CLinker.C_INT.withName("kids"),
+                CLinker.C_POINTER.withName("birthDate"),
+                MemoryLayout.structLayout(CLinker.C_POINTER.withName("street"))
+                        .withName("address"));
+ var streetVarHandle = struct.varHandle(long.class, groupElement("address"), groupElement("street"));
+ out.println("set address.street field in struct method handle type: " + streetVarHandle.toMethodHandle(VarHandle.AccessMode.SET).type());
+ out.println("get address.street field in struct method handle type: " + streetVarHandle.toMethodHandle(VarHandle.AccessMode.GET).type());
 
-var valueVarHandler = cStructLayout.varHandle(int.class, PathElement.groupElement("value"));
-var yearVarHandler = cStructLayout.varHandle(int.class, PathElement.groupElement("date"), PathElement.groupElement("year"));
+ try (var resourceScope = ResourceScope.newConfinedScope()) {
+     var memorySegment = MemorySegment.allocateNative(struct, resourceScope);
+     var string = CLinker.toCString("Wielkiego Stacha 16b, Psie Pole", resourceScope);
+     var asAddressVarHandle = MemoryHandles.asAddressVarHandle(streetVarHandle);
+
+     asAddressVarHandle.set(memorySegment, string.address());
+ }
 ----
 
 === alignment, padding and access modes
 
 * data structure alignment, unaligned access will throw exception,
 * memory layout supports padding,
-* var handles on memory segments can use `MemoryAccess` modes (atomic, volatile, acquire-get)
+* var handles on memory segments can use `MemoryAccess` modes (atomic, volatile, acquire-get), please read documentation, there are rules around padding and sizes
 
-=== unchecked segments
+=== unsafe memory segments
 
-[quote,,JEP 393]
-Dereference operations are only possible on memory segments.
-Since a memory segment has spatial and temporal bounds, the runtime can always ensure that memory associated with a given segment is dereferenced safely.
+[quote,,JEP 412]
+Dereference operations are only possible on memory segments. Since a memory segment has spatial and temporal bounds, the Java runtime can always ensure that memory associated with a given segment is dereferenced safely. However, there are situations where clients might only have a MemoryAddress instance, as is often the case when interacting with native code. Since the Java runtime has no way to know the spatial and temporal bounds associated with a memory address, directly dereferencing memory addresses is forbidden by the FFM API.
 
 === !
 
-*Since a memory segment has spatial and temporal bounds, the runtime can always ensure that memory associated with a given segment is dereferenced safely*
+*Since the Java runtime has no way to know the spatial and temporal bounds associated with a memory address, directly dereferencing memory addresses is forbidden by the FFM API*
 
 === !
 
@@ -371,19 +358,18 @@ what if dont' have `MemorySegment` but just a `MemoryAddress`? +
 
 === !
 
-* if memory adress fails into spatial bounds of existing memory segment, you can perform rebase operation,
-`MemoryAddress::segmentOffset`
-* otherwise, call `MemoryAddress::asSegmentRestricted` (unsafe operation), requires consent from user ;)
-* set JDK property, `foreign.restricted`
-** `deny` — issues a runtime exception on each restricted call (this is the default value);
-** `permit` — allows restricted calls;
-** `warn` — like permit, but also prints a one-line warning on each restricted call; and
-** `debug` — like permit, but also dumps the stack corresponding to any given restricted call.
+* If the address is known to fall within a memory segment, the client can perform a rebase operation via MemoryAddress::segmentOffset. The rebasing operation re-interprets the address's offset relative to the segment's base address to yield a new offset which can be applied to the existing segment — which can then be safely dereferenced
+* Alternatively, if no such segment exists then the client can create one unsafely, using the MemoryAddress::asSegment factory. This factory effectively attaches fresh spatial and temporal bounds to an otherwise raw memory address, so as to allow dereference operations. The memory segment returned by this factory is unsafe: A raw memory address might be associated with a memory region that is 10 bytes long, but the client might accidentally overestimate the size of the region and create an unsafe memory segment that is 100 bytes long. This might result, later, in attempts to dereference memory outside the bounds of the memory region associated with the unsafe segment, which might cause a JVM crash or, worse, result in silent memory corruption. For this reason, creating unsafe segments is regarded as a restricted operation, and is disabled by default
 
-[role=highlight_section_title]
-=== demo
+=== safety
 
-image::pexels-web-donut-19101.jpg[background]
+[quote,,JEP-412]
+To enable access to unsafe methods for code in some module M, specify java --enable-native-access=M on the command line.
+
+=== things we didn't discuss
+
+* `SegmentAllocator` and custom allocators
+* memory access mode (whole new separate presentation)
 
 === hello C
 
@@ -400,54 +386,37 @@ JNI is used in many places in JDK (and JVM), +
 these things are inherently slow and bloated +
 my favorite part java.io and java.net
 
-=== project panama
+=== state of affairs
 
-foreign memory & foreign linker to ease access to native memory and native code
+The initial scope of this effort aims at providing high quality, fully optimized interoperability with C libraries, on x64 and AArch64 platforms.
 
-=== goals
-
-Ease of use: Replace JNI with a superior pure-Java development model
-
-=== goals
-
-C support: The initial scope of this effort aims at providing high quality, fully optimized interoperability with C libraries, on x64 and AArch64 platforms.
-
-=== goals
-
-Generality: The Foreign Linker API and implementation should be flexible enough to, over time, accommodate support for other platforms (e.g., 32-bit x86) and foreign functions written in languages other than C (e.g. C++, Fortran).
-
-=== goals
-
-Performance: The Foreign Linker API should provide performance that is comparable to, or better than, JNI.
+The Foreign Linker API and implementation should be flexible enough to, over time, accommodate support for other platforms (e.g., 32-bit x86) and foreign functions written in languages other than C (e.g. C++, Fortran).
 
 === say hi to `CLinker`
 
 * downcalls (e.g. calls from Java to native code), the downcallHandle method can be used to model native functions as plain MethodHandle objects.
 * upcalls (e.g. calls from native back to Java code), the upcallStub method can be used to convert an existing MethodHandle (which might point to some Java method) into a MemorySegment, which can then be passed to a native function as a function pointer.
 
-=== core
+=== center of the universe
 
 * CLinker
-* LibraryLookup
+* SymbolLookup
 * FunctionDescriptor
 
 === downcalls
 
 [source,java]
 ----
-import jdk.incubator.foreign.CLinker;
-import jdk.incubator.foreign.FunctionDescriptor;
-import jdk.incubator.foreign.LibraryLookup;
-import java.lang.invoke.MethodType;
-
-var libraryLookup = LibraryLookup.ofDefault();
+var libraryLookup = CLinker.systemLookup();
 
 var getpidSymbol = libraryLookup.lookup("getpid")
-        .orElseThrow(() -> new RuntimeException("getpid symbol not found"));
+                .orElseThrow(() -> new RuntimeException("getpid symbol not found"));
 
 var functionDescriptor = FunctionDescriptor.of(CLinker.C_INT);
 var methodType = MethodType.methodType(int.class);
-var methodHandle = CLinker.getInstance().downcallHandle(getpidSymbol, methodType, functionDescriptor);
+var methodHandle = CLinker.getInstance().downcallHandle(getpidSymbol,
+                                                        methodType,
+                                                        functionDescriptor);
 System.out.println(methodHandle.invoke());
 ----
 
@@ -463,22 +432,27 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import static java.lang.System.out;
 
-var libraryLookup = LibraryLookup.ofDefault();
+        var symbolLookup = CLinker.systemLookup();
 
-var cLinker = CLinker.getInstance();
+        var cLinker = CLinker.getInstance();
 
-out.println("creating signal handler stub");
-var signalHandler = MethodHandles.lookup()
-        .findStatic(SIGTERM.class, "onSignal", MethodType.methodType(void.class, int.class));
-var signalHandlerStub = cLinker.upcallStub(signalHandler, FunctionDescriptor.ofVoid(CLinker.C_INT));
+        out.println("creating signal handler stub");
+        // QUESTION: why the hell global scope?
+        var resourceScope = ResourceScope.globalScope();
+        var signalHandler = MethodHandles.lookup()
+                .findStatic(SIGTERM.class, "onSignal",
+                        MethodType.methodType(void.class, int.class));
+        var signalHandlerStub = cLinker.upcallStub(signalHandler,
+                FunctionDescriptor.ofVoid(CLinker.C_INT), resourceScope);
 
-out.println("installing signal handler " + signalHandlerStub);
-var signal = libraryLookup.lookup("signal")
-        .orElseThrow(() -> new RuntimeException("signal symbol not found"));
-var signalHandle = cLinker.downcallHandle(signal,
-        MethodType.methodType(void.class, int.class, MemoryAddress.class),
-        FunctionDescriptor.ofVoid(CLinker.C_INT, CLinker.C_POINTER));
-signalHandle.invoke(15, signalHandlerStub.address());
+        out.println("installing signal handler " + signalHandlerStub);
+        var signal = symbolLookup.lookup("signal")
+                .orElseThrow(() -> new RuntimeException("signal symbol not found"));
+        var signalHandle = cLinker.downcallHandle(signal,
+                MethodType.methodType(void.class, int.class, MemoryAddress.class),
+                FunctionDescriptor.ofVoid(CLinker.C_INT, CLinker.C_POINTER));
+        out.println(signalHandle.type());
+        signalHandle.invoke(15, signalHandlerStub.address());
 ----
 
 === !
@@ -487,18 +461,23 @@ image::https://media.giphy.com/media/plcoWBSrPvOP6/giphy.gif[background]
 
 === too much magic
 
-panama early access builds contain a real gem
+as you can imagine, it means handwriting all `FunctionDescriptor` and structs and unions
+from C header files, to be able to work any advanced C library
 
-https://jdk.java.net/panama/[]
+=== a real gem
+
+panama early access builds contain `jextract` command line, which generates
+classes (and source files), from any C header file,
+
+with some limitations
+
+https://jdk.java.net/panama/[Project Panama Early-Access Builds]
 
 === jextract
 
 it generates Java code from C header files
 
-[role=highlight_section_title]
-=== demo
-
-image::pexels-web-donut-19101.jpg[background]
+    jextract -d ${build.directory}/generated-sources -t pl.symentis.foreign.posix --source /usr/include/mqueue.h
 
 == vectorization
 
@@ -723,7 +702,10 @@ then use Vector API +
 === !
 
 [quote,,JEP 414]
-it seems that auto-vectorization of scalar code is not a reliable tactic for optimizing ad-hoc user-written loops unless the user pays unusually careful attention to unwritten contracts about exactly which loops a compiler is prepared to auto-vectorize. It is too easy to write a loop that fails to auto-vectorize, for a reason that no human reader can detect. Years of work on auto-vectorization, even in HotSpot, have left us with lots of optimization machinery that works only on special occasions. We want to enjoy the use of this machinery more often!
+it seems that auto-vectorization of scalar code is not a reliable tactic for optimizing ad-hoc user-written loops unless the user pays unusually careful attention to unwritten contracts about exactly which loops a compiler is prepared to auto-vectorize.
+It is too easy to write a loop that fails to auto-vectorize, for a reason that no human reader can detect.
+Years of work on auto-vectorization, even in HotSpot, have left us with lots of optimization machinery that works only on special occasions.
+We want to enjoy the use of this machinery more often!
 
 === what's next?
 

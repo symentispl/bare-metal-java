@@ -7,43 +7,9 @@
     <groupId>org.example</groupId>
     <artifactId>foreign-linker</artifactId>
     <version>1.0-SNAPSHOT</version>
-
-    <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
-    </properties>
-
+    
     <build>
         <plugins>
-<!--            <plugin>-->
-<!--                <groupId>org.codehaus.mojo</groupId>-->
-<!--                <artifactId>exec-maven-plugin</artifactId>-->
-<!--                <version>1.6.0</version>-->
-<!--                <executions>-->
-<!--                    <execution>-->
-<!--                        <id>jextract-mqueue_h</id>-->
-<!--                        <phase>generate-sources</phase>-->
-<!--                        <goals>-->
-<!--                            <goal>exec</goal>-->
-<!--                        </goals>-->
-<!--                        <configuration>-->
-<!--                            <executable>jextract</executable>-->
-<!--                            <commandlineArgs> -d ${build.directory}/generated-sources -t pl.symentis.foreign.posix &#45;&#45;source /usr/include/mqueue.h</commandlineArgs>-->
-<!--                        </configuration>-->
-<!--                    </execution>-->
-<!--                    <execution>-->
-<!--                        <id>jextract-errno_h</id>-->
-<!--                        <phase>generate-sources</phase>-->
-<!--                        <goals>-->
-<!--                            <goal>exec</goal>-->
-<!--                        </goals>-->
-<!--                        <configuration>-->
-<!--                            <executable>jextract</executable>-->
-<!--                            <commandlineArgs> -d ${build.directory}/generated-sources -t pl.symentis.foreign.posix &#45;&#45;source /usr/include/errno.h</commandlineArgs>-->
-<!--                        </configuration>-->
-<!--                    </execution>-->
-<!--                </executions>-->
-<!--            </plugin>-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>

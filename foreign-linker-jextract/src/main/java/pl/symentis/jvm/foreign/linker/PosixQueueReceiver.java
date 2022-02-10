@@ -1,12 +1,10 @@
 package pl.symentis.jvm.foreign.linker;
 
-import jdk.incubator.foreign.CLinker;
-import jdk.incubator.foreign.MemoryAccess;
-import jdk.incubator.foreign.MemorySegment;
-import pl.symentis.foreign.posix.errno_h;
-import pl.symentis.foreign.posix.mqueue_h;
+import jdk.incubator.foreign.*;
+import pl.symentis.foreign.posix.errno.errno_h;
+import pl.symentis.foreign.posix.mqueue.mq_attr;
+import pl.symentis.foreign.posix.mqueue.mqueue_h;
 
-import static java.lang.String.format;
 import static java.lang.System.out;
 
 public class PosixQueueReceiver {
@@ -14,13 +12,15 @@ public class PosixQueueReceiver {
     private static int MSG_SIZE = 8192;
 
     public static void main(String[] args) {
+        try (var resourceScope = ResourceScope.newConfinedScope()) {
 
-        try (var mqueue_name = CLinker.toCString("/queue");
-             var mq_attr = mqueue_h.mq_attr.allocate();) {
+            var segmentAllocator = SegmentAllocator.nativeAllocator(resourceScope);
+            var mqAttr = mq_attr.allocate(resourceScope);
+            var mqueue_name = segmentAllocator.allocateUtf8String("/queue");
 
-            mqueue_h.mq_attr.mq_maxmsg$set(mq_attr, 300);
-            mqueue_h.mq_attr.mq_msgsize$set(mq_attr, MSG_SIZE);
-            mqueue_h.mq_attr.mq_flags$set(mq_attr, 0);
+            mq_attr.mq_maxmsg$set(mqAttr, 300);
+            mq_attr.mq_msgsize$set(mqAttr, MSG_SIZE);
+            mq_attr.mq_flags$set(mqAttr, 0);
 
             var queue_desc = mqueue_h.mq_open(mqueue_name,
                     mqueue_h.O_RDWR() | mqueue_h.O_CREAT(),
@@ -28,34 +28,36 @@ public class PosixQueueReceiver {
                     0); // additional attributes
 
             if (queue_desc == -1) {
-                int errno = errno();
+                int errno = errno(resourceScope);
                 throw new RuntimeException("failed to mq_open with errno " + errno);
             }
 
             out.println("POSIX queue opened");
 
             while (true) {
-                try (var msg = MemorySegment.allocateNative(MSG_SIZE);
-                     var msg_prio = MemorySegment.allocateNative(CLinker.C_LONG)) {
+                try (var innerResourceScope = ResourceScope.newConfinedScope()) {
+
+                    var msg = MemorySegment.allocateNative(MSG_SIZE, innerResourceScope);
+                    var msg_prio = MemorySegment.allocateNative(ValueLayout.JAVA_LONG, innerResourceScope);
                     var receivedBytes = mqueue_h.mq_receive(queue_desc, msg, MSG_SIZE, msg_prio);
 
                     if (receivedBytes != -1) {
-                        out.println(format("Message received: %s", CLinker.toJavaString(msg)));
+                        out.printf("Message received: %s%n", msg.getUtf8String(0));
                     } else {
-                        int errno = errno();
+                        int errno = errno(innerResourceScope);
                         throw new RuntimeException("failed to mq_receive with errno " + errno);
                     }
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-            }
 
+            }
         }
+
     }
 
-    private static int errno() {
-        var errno = errno_h.__errno_location().asSegmentRestricted(4);
-        return MemoryAccess.getInt(errno);
+    private static int errno(ResourceScope resourceScope) {
+        return errno_h.__errno_location().get(ValueLayout.JAVA_INT, 0);
     }
 }

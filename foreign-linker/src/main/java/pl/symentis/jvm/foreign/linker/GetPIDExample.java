@@ -8,7 +8,6 @@ import java.lang.invoke.MethodType;
 public class GetPIDExample {
 
     public static void main(String[] args) throws Throwable {
-        System.loadLibrary("libasound");
         var libraryLookup = CLinker.systemLookup();
 
         var getpidSymbol = libraryLookup.lookup("getpid")
@@ -21,7 +20,6 @@ public class GetPIDExample {
                         methodType,
                         functionDescriptor);
         System.out.println(methodHandle.invoke());
-        ;
     }
 }
 
