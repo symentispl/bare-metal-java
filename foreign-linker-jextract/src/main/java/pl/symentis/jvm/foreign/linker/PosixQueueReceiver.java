@@ -12,12 +12,13 @@ public class PosixQueueReceiver {
     private static int MSG_SIZE = 8192;
 
     public static void main(String[] args) {
+        System.loadLibrary("rt");
         try (var resourceScope = ResourceScope.newConfinedScope()) {
 
             var segmentAllocator = SegmentAllocator.nativeAllocator(resourceScope);
-            var mqAttr = mq_attr.allocate(resourceScope);
             var mqueue_name = segmentAllocator.allocateUtf8String("/queue");
 
+            var mqAttr = mq_attr.allocate(resourceScope);
             mq_attr.mq_maxmsg$set(mqAttr, 300);
             mq_attr.mq_msgsize$set(mqAttr, MSG_SIZE);
             mq_attr.mq_flags$set(mqAttr, 0);
