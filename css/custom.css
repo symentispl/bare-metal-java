@@ -1,0 +1,26 @@
+@import "../revealjs-plugins/reveal.js-copycode-1.0.0/assets/js/revealjs/plugin/copycode/copycode.css";
+
+h1 {
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+}
+
+
+.highlight_section_title h2 {
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+}
+
+.reveal pre code {
+  background: black;
+}
+
+.reveal blockquote {
+  width : 90%;
+}
+
+.highlight-paragraph div {
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  font-size: larger;
+}
