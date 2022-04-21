@@ -403,7 +403,7 @@ TeX: { equationNumbers: { autoNumber: "none" } }
 link.rel = 'stylesheet';
 link.type = 'text/css';
 link.href = window.location.search.match( /print-pdf/gi ) ? "reveal.js/css/print/pdf.css" : "reveal.js/css/print/paper.css";
-document.getElementsByTagName( 'head' )[0].appendChild( link );</script><link rel="stylesheet" href="css/custom.css"></head><body><div class="reveal"><div class="slides"><section class="title" data-state="title"><h1>Bare metal Java</h1></section><section id="bare_metal_java" class="highlight_section_title" data-background-image="images/pexels-pixabay-327049.jpg"><h2>Bare metal java</h2></section>
+document.getElementsByTagName( 'head' )[0].appendChild( link );</script><link rel="stylesheet" href="css/custom.css"></head><body><div class="reveal"><div class="slides"><section class="title" data-state="title"><h1>Bare metal Java</h1></section><section id="bare_metal_java" class="highlight_section_title" data-background-image="images/pexels-pixabay-327049.jpg"><h2>Bare metal Java</h2></section>
 <section id="about_me"><h2>about me</h2><div class="slide-content"><div class="paragraph"><p>Jarek Pałka (@j_palka)</p></div>
 <div class="paragraph"><p>Neo4j (a graph database) staff engineer/team lead/benchmarking team</p></div>
 <div class="paragraph"><p>over 20 years with JVM ( and people)<br>
@@ -500,53 +500,40 @@ try (var resourceScope = ResourceScope.newConfinedScope()) {
 
      asAddressVarHandle.set(memorySegment, string.address());
  }</code></pre></div></div></div></section><section id="alignment_padding_and_access_modes"><h2>alignment, padding and access modes</h2><div class="slide-content"><div class="ulist"><ul><li><p>data structure alignment, unaligned access will throw exception,</p></li><li><p>memory layout supports padding,</p></li><li><p>var handles on memory segments can use <code>MemoryAccess</code> modes (atomic, volatile, acquire-get), please read documentation, there are rules around padding and sizes</p></li></ul></div></div></section><section id="unsafe_memory_segments"><h2>unsafe memory segments</h2><div class="slide-content"><div class="quoteblock"><blockquote>Dereference operations are only possible on memory segments. Since a memory segment has spatial and temporal bounds, the Java runtime can always ensure that memory associated with a given segment is dereferenced safely. However, there are situations where clients might only have a MemoryAddress instance, as is often the case when interacting with native code. Since the Java runtime has no way to know the spatial and temporal bounds associated with a memory address, directly dereferencing memory addresses is forbidden by the FFM API.</blockquote><div class="attribution"><cite>JEP 412</cite></div></div></div></section><section><div class="slide-content"><div class="paragraph"><p><strong>Since the Java runtime has no way to know the spatial and temporal bounds associated with a memory address, directly dereferencing memory addresses is forbidden by the FFM API</strong></p></div></div></section><section><div class="slide-content"><div class="paragraph"><p>what if dont' have <code>MemorySegment</code> but just a <code>MemoryAddress</code>?<br>
-(like in examples in section to follow)</p></div></div></section><section><div class="slide-content"><div class="ulist"><ul><li><p>If the address is known to fall within a memory segment, the client can perform a rebase operation via MemoryAddress::segmentOffset. The rebasing operation re-interprets the address&#8217;s offset relative to the segment&#8217;s base address to yield a new offset which can be applied to the existing segment — which can then be safely dereferenced</p></li><li><p>Alternatively, if no such segment exists then the client can create one unsafely, using the MemoryAddress::asSegment factory. This factory effectively attaches fresh spatial and temporal bounds to an otherwise raw memory address, so as to allow dereference operations. The memory segment returned by this factory is unsafe: A raw memory address might be associated with a memory region that is 10 bytes long, but the client might accidentally overestimate the size of the region and create an unsafe memory segment that is 100 bytes long. This might result, later, in attempts to dereference memory outside the bounds of the memory region associated with the unsafe segment, which might cause a JVM crash or, worse, result in silent memory corruption. For this reason, creating unsafe segments is regarded as a restricted operation, and is disabled by default</p></li></ul></div></div></section><section id="safety"><h2>safety</h2><div class="slide-content"><div class="quoteblock"><blockquote>To enable access to unsafe methods for code in some module M, specify java --enable-native-access=M on the command line.</blockquote><div class="attribution"><cite>JEP-412</cite></div></div></div></section><section id="things_we_didnt_discuss"><h2>things we didn&#8217;t discuss</h2><div class="slide-content"><div class="ulist"><ul><li><p><code>SegmentAllocator</code> and custom allocators</p></li><li><p>memory access mode (whole new separate presentation)</p></li></ul></div></div></section><section id="hello_c"><h2>hello C</h2><div class="slide-content"><div class="ulist"><ul><li><p>JNI, old, slow, hard to implement,no major improvements since release,</p></li><li><p>and collection of JNI wrappers,</p><div class="ulist"><ul><li><p><a href="https://github.com/java-native-access/jna">JNA</a></p></li><li><p><a href="https://github.com/jnr/jnr-ffi">jnr-ffi</a></p></li><li><p><a href="https://github.com/bytedeco/javacpp">JavaCPP</a></p></li><li><p><a href="https://github.com/jmarranz/jnieasy">JNIEasy</a></p></li></ul></div></li></ul></div></div></section><section id="eat_your_own_dog_food"><h2>eat your own dog food</h2><div class="slide-content"><div class="paragraph"><p>JNI is used in many places in JDK (and JVM),<br>
+(like in examples in section to follow)</p></div></div></section><section><div class="slide-content"><div class="ulist"><ul><li><p>If the address is known to fall within a memory segment, the client can perform a rebase operation via MemoryAddress::segmentOffset. The rebasing operation re-interprets the address&#8217;s offset relative to the segment&#8217;s base address to yield a new offset which can be applied to the existing segment — which can then be safely dereferenced</p></li><li><p>Alternatively, if no such segment exists then the client can create one unsafely, using the MemoryAddress::asSegment factory. This factory effectively attaches fresh spatial and temporal bounds to an otherwise raw memory address, so as to allow dereference operations. The memory segment returned by this factory is unsafe: A raw memory address might be associated with a memory region that is 10 bytes long, but the client might accidentally overestimate the size of the region and create an unsafe memory segment that is 100 bytes long. This might result, later, in attempts to dereference memory outside the bounds of the memory region associated with the unsafe segment, which might cause a JVM crash or, worse, result in silent memory corruption. For this reason, creating unsafe segments is regarded as a restricted operation, and is disabled by default</p></li></ul></div></div></section><section id="safety"><h2>safety</h2><div class="slide-content"><div class="quoteblock"><blockquote>To enable access to unsafe methods for code in some module M, specify java --enable-native-access=M on the command line.</blockquote><div class="attribution"><cite>JEP-412</cite></div></div></div></section><section id="things_we_didnt_discuss"><h2>things we didn&#8217;t discuss</h2><div class="slide-content"><div class="ulist"><ul><li><p><code>SegmentAllocator</code> and custom allocators</p></li><li><p>memory access modes (whole new separate presentation)</p></li></ul></div></div></section><section id="hello_c"><h2>hello C</h2><div class="slide-content"><div class="ulist"><ul><li><p>JNI, old, slow, hard to implement,no major improvements since release,</p></li><li><p>and collection of JNI wrappers,</p><div class="ulist"><ul><li><p><a href="https://github.com/java-native-access/jna">JNA</a></p></li><li><p><a href="https://github.com/jnr/jnr-ffi">jnr-ffi</a></p></li><li><p><a href="https://github.com/bytedeco/javacpp">JavaCPP</a></p></li><li><p><a href="https://github.com/jmarranz/jnieasy">JNIEasy</a></p></li></ul></div></li></ul></div></div></section><section id="eat_your_own_dog_food"><h2>eat your own dog food</h2><div class="slide-content"><div class="paragraph"><p>JNI is used in many places in JDK (and JVM),<br>
 these things are inherently slow and bloated<br>
 my favorite part java.io and java.net</p></div></div></section><section id="state_of_affairs"><h2>state of affairs</h2><div class="slide-content"><div class="paragraph"><p>The initial scope of this effort aims at providing high quality, fully optimized interoperability with C libraries, on x64 and AArch64 platforms.</p></div>
-<div class="paragraph"><p>The Foreign Linker API and implementation should be flexible enough to, over time, accommodate support for other platforms (e.g., 32-bit x86) and foreign functions written in languages other than C (e.g. C++, Fortran).</p></div></div></section><section id="say_hi_to_clinker"><h2>say hi to <code>CLinker</code></h2><div class="slide-content"><div class="ulist"><ul><li><p>downcalls (e.g. calls from Java to native code), the downcallHandle method can be used to model native functions as plain MethodHandle objects.</p></li><li><p>upcalls (e.g. calls from native back to Java code), the upcallStub method can be used to convert an existing MethodHandle (which might point to some Java method) into a MemorySegment, which can then be passed to a native function as a function pointer.</p></li></ul></div></div></section><section id="center_of_the_universe"><h2>center of the universe</h2><div class="slide-content"><div class="ulist"><ul><li><p>CLinker</p></li><li><p>SymbolLookup</p></li><li><p>FunctionDescriptor</p></li></ul></div></div></section><section id="downcalls"><h2>downcalls</h2><div class="slide-content"><div class="listingblock"><div class="content"><pre class="highlightjs highlight"><code class="language-java hljs" data-noescape="true" data-lang="java">var libraryLookup = CLinker.systemLookup();
-
-var getpidSymbol = libraryLookup.lookup("getpid")
-                .orElseThrow(() -&gt; new RuntimeException("getpid symbol not found"));
-
-var functionDescriptor = FunctionDescriptor.of(CLinker.C_INT);
-var methodType = MethodType.methodType(int.class);
-var methodHandle = CLinker.getInstance().downcallHandle(getpidSymbol,
-                                                        methodType,
-                                                        functionDescriptor);
-System.out.println(methodHandle.invoke());</code></pre></div></div></div></section><section id="upcalls"><h2>upcalls</h2><div class="slide-content"><div class="listingblock"><div class="content"><pre class="highlightjs highlight"><code class="language-java hljs" data-noescape="true" data-lang="java">import jdk.incubator.foreign.CLinker;
-import jdk.incubator.foreign.FunctionDescriptor;
-import jdk.incubator.foreign.LibraryLookup;
-import jdk.incubator.foreign.MemoryAddress;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import static java.lang.System.out;
-
-        var symbolLookup = CLinker.systemLookup();
-
-        var cLinker = CLinker.getInstance();
-
-        out.println("creating signal handler stub");
-        // QUESTION: why the hell global scope?
-        var resourceScope = ResourceScope.globalScope();
-        var signalHandler = MethodHandles.lookup()
-                .findStatic(SIGTERM.class, "onSignal",
-                        MethodType.methodType(void.class, int.class));
-        var signalHandlerStub = cLinker.upcallStub(signalHandler,
-                FunctionDescriptor.ofVoid(CLinker.C_INT), resourceScope);
-
-        out.println("installing signal handler " + signalHandlerStub);
-        var signal = symbolLookup.lookup("signal")
-                .orElseThrow(() -&gt; new RuntimeException("signal symbol not found"));
-        var signalHandle = cLinker.downcallHandle(signal,
-                MethodType.methodType(void.class, int.class, MemoryAddress.class),
-                FunctionDescriptor.ofVoid(CLinker.C_INT, CLinker.C_POINTER));
-        out.println(signalHandle.type());
-        signalHandle.invoke(15, signalHandlerStub.address());</code></pre></div></div></div></section><section data-background-image="https://media.giphy.com/media/plcoWBSrPvOP6/giphy.gif"></section><section id="too_much_magic"><h2>too much magic</h2><div class="slide-content"><div class="paragraph"><p>as you can imagine, it means handwriting all <code>FunctionDescriptor</code> and structs and unions
+<div class="paragraph"><p>The Foreign Linker API and implementation should be flexible enough to, over time, accommodate support for other platforms (e.g., 32-bit x86) and foreign functions written in languages other than C (e.g. C++, Fortran).</p></div></div></section><section id="say_hi_to_clinker"><h2>say hi to <code>CLinker</code></h2><div class="slide-content"><div class="ulist"><ul><li><p>downcalls (e.g. calls from Java to native code), the downcallHandle method can be used to model native functions as plain MethodHandle objects.</p></li><li><p>upcalls (e.g. calls from native back to Java code), the upcallStub method can be used to convert an existing MethodHandle (which might point to some Java method) into a MemorySegment, which can then be passed to a native function as a function pointer.</p></li></ul></div></div></section><section id="center_of_the_universe"><h2>center of the universe</h2><div class="slide-content"><div class="ulist"><ul><li><p>CLinker</p></li><li><p>SymbolLookup</p></li><li><p>FunctionDescriptor</p></li></ul></div></div></section><section id="downcalls"><h2>downcalls</h2><div class="slide-content"><div class="listingblock"><div class="content"><pre class="highlightjs highlight"><code class="language-java hljs" data-noescape="true" data-lang="java">var cLinker = CLinker.systemCLinker();
+ var getpidSymbol = cLinker.lookup( "getpid" )
+                           .orElseThrow( () -&gt; new RuntimeException( "getpid symbol not found" ) );
+ var functionDescriptor = FunctionDescriptor.of( ValueLayout.JAVA_INT );
+ var methodHandle = cLinker
+         .downcallHandle( getpidSymbol,
+                          functionDescriptor );
+ System.out.println( methodHandle.invoke() );</code></pre></div></div></div></section><section id="upcalls"><h2>upcalls</h2><div class="slide-content"><div class="listingblock"><div class="content"><pre class="highlightjs highlight"><code class="language-java hljs" data-noescape="true" data-lang="java">var cLinker = CLinker.systemCLinker();
+out.println( "creating signal handler stub" );
+// QUESTION: why the hell global scope?
+var resourceScope = ResourceScope.globalScope();
+var signalHandler = MethodHandles.lookup()
+                                 .findStatic( SIGTERM.class, "onSignal",
+                                              MethodType.methodType( void.class, int.class ) );
+var signalHandlerStub = cLinker.upcallStub( signalHandler,
+                                            FunctionDescriptor.ofVoid( ValueLayout.JAVA_INT ), resourceScope );
+out.println( "installing signal handler " + signalHandlerStub );
+var signal = cLinker.lookup( "signal" )
+                    .orElseThrow( () -&gt; new RuntimeException( "signal symbol not found" ) );
+var signalHandle = cLinker.downcallHandle( signal,
+                                           FunctionDescriptor.ofVoid( ValueLayout.JAVA_INT, ValueLayout.ADDRESS ) );
+out.println( signalHandle.type() );
+signalHandle.invoke( 15, signalHandlerStub.address() );
+out.println( "Press &lt;ENTER&gt; to quit" );
+System.in.read();</code></pre></div></div></div></section><section data-background-image="https://media.giphy.com/media/plcoWBSrPvOP6/giphy.gif"></section><section id="too_much_magic"><h2>too much magic</h2><div class="slide-content"><div class="paragraph"><p>as you can imagine, it means handwriting all <code>FunctionDescriptor</code> and structs and unions
 from C header files, to be able to work any advanced C library</p></div></div></section><section id="a_real_gem"><h2>a real gem</h2><div class="slide-content"><div class="paragraph"><p>panama early access builds contain <code>jextract</code> command line, which generates
 classes (and source files), from any C header file,</p></div>
 <div class="paragraph"><p>with some limitations</p></div>
 <div class="paragraph"><p><a href="https://jdk.java.net/panama/">Project Panama Early-Access Builds</a></p></div></div></section><section id="jextract"><h2>jextract</h2><div class="slide-content"><div class="paragraph"><p>it generates Java code from C header files</p></div>
 <div class="literalblock"><div class="content"><pre>jextract -d ${build.directory}/generated-sources -t pl.symentis.foreign.posix --source /usr/include/mqueue.h</pre></div></div></div></section></section>
+<section id="end_of_part_1"><h2>end of part 1</h2></section>
 <section><section id="vectorization"><h2>vectorization</h2><div class="slide-content"><div class="listingblock"><div class="content"><pre class="highlightjs highlight"><code class="language-java hljs" data-noescape="true" data-lang="java">x1=y1+z1;
 x2=y2+z2;
 x3=y3+z3;
