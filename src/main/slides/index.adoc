@@ -15,7 +15,7 @@
 :icons: font
 
 [role=highlight_section_title]
-== Bare metal java
+== Bare metal Java
 
 image::pexels-pixabay-327049.jpg[background]
 
@@ -370,7 +370,7 @@ To enable access to unsafe methods for code in some module M, specify java --ena
 === things we didn't discuss
 
 * `SegmentAllocator` and custom allocators
-* memory access mode (whole new separate presentation)
+* memory access modes (whole new separate presentation)
 
 === hello C
 
@@ -408,52 +408,38 @@ The Foreign Linker API and implementation should be flexible enough to, over tim
 
 [source,java]
 ----
-var libraryLookup = CLinker.systemLookup();
-
-var getpidSymbol = libraryLookup.lookup("getpid")
-                .orElseThrow(() -> new RuntimeException("getpid symbol not found"));
-
-var functionDescriptor = FunctionDescriptor.of(CLinker.C_INT);
-var methodType = MethodType.methodType(int.class);
-var methodHandle = CLinker.getInstance().downcallHandle(getpidSymbol,
-                                                        methodType,
-                                                        functionDescriptor);
-System.out.println(methodHandle.invoke());
+var cLinker = CLinker.systemCLinker();
+ var getpidSymbol = cLinker.lookup( "getpid" )
+                           .orElseThrow( () -> new RuntimeException( "getpid symbol not found" ) );
+ var functionDescriptor = FunctionDescriptor.of( ValueLayout.JAVA_INT );
+ var methodHandle = cLinker
+         .downcallHandle( getpidSymbol,
+                          functionDescriptor );
+ System.out.println( methodHandle.invoke() );
 ----
 
 === upcalls
 
 [source,java]
 ----
-import jdk.incubator.foreign.CLinker;
-import jdk.incubator.foreign.FunctionDescriptor;
-import jdk.incubator.foreign.LibraryLookup;
-import jdk.incubator.foreign.MemoryAddress;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import static java.lang.System.out;
-
-        var symbolLookup = CLinker.systemLookup();
-
-        var cLinker = CLinker.getInstance();
-
-        out.println("creating signal handler stub");
-        // QUESTION: why the hell global scope?
-        var resourceScope = ResourceScope.globalScope();
-        var signalHandler = MethodHandles.lookup()
-                .findStatic(SIGTERM.class, "onSignal",
-                        MethodType.methodType(void.class, int.class));
-        var signalHandlerStub = cLinker.upcallStub(signalHandler,
-                FunctionDescriptor.ofVoid(CLinker.C_INT), resourceScope);
-
-        out.println("installing signal handler " + signalHandlerStub);
-        var signal = symbolLookup.lookup("signal")
-                .orElseThrow(() -> new RuntimeException("signal symbol not found"));
-        var signalHandle = cLinker.downcallHandle(signal,
-                MethodType.methodType(void.class, int.class, MemoryAddress.class),
-                FunctionDescriptor.ofVoid(CLinker.C_INT, CLinker.C_POINTER));
-        out.println(signalHandle.type());
-        signalHandle.invoke(15, signalHandlerStub.address());
+var cLinker = CLinker.systemCLinker();
+out.println( "creating signal handler stub" );
+// QUESTION: why the hell global scope?
+var resourceScope = ResourceScope.globalScope();
+var signalHandler = MethodHandles.lookup()
+                                 .findStatic( SIGTERM.class, "onSignal",
+                                              MethodType.methodType( void.class, int.class ) );
+var signalHandlerStub = cLinker.upcallStub( signalHandler,
+                                            FunctionDescriptor.ofVoid( ValueLayout.JAVA_INT ), resourceScope );
+out.println( "installing signal handler " + signalHandlerStub );
+var signal = cLinker.lookup( "signal" )
+                    .orElseThrow( () -> new RuntimeException( "signal symbol not found" ) );
+var signalHandle = cLinker.downcallHandle( signal,
+                                           FunctionDescriptor.ofVoid( ValueLayout.JAVA_INT, ValueLayout.ADDRESS ) );
+out.println( signalHandle.type() );
+signalHandle.invoke( 15, signalHandlerStub.address() );
+out.println( "Press <ENTER> to quit" );
+System.in.read();
 ----
 
 === !
@@ -479,6 +465,8 @@ https://jdk.java.net/panama/[Project Panama Early-Access Builds]
 it generates Java code from C header files
 
     jextract -d ${build.directory}/generated-sources -t pl.symentis.foreign.posix --source /usr/include/mqueue.h
+
+== end of part 1
 
 == vectorization
 
