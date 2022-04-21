@@ -147,12 +147,13 @@ not official API,
 
 image::https://media.giphy.com/media/yvBAuESRTsETqNFlEl/giphy.gif[background]
 
-=== it takes four
+=== it takes five
 
 * first proposed by JEP 370 and targeted to Java 14
 * and later re-incubated by JEP 383 which was targeted to Java 15
 * third proposal https://openjdk.java.net/jeps/393[JEP 393: Foreign-Memory Access API (Third Incubator)] released with Java 16
 * fourth proposal https://openjdk.java.net/jeps/412[JEP 412: Foreign Function & Memory API (Incubator)] (merge of two JEPs, but more about it later)
+* fifth proposal https://openjdk.java.net/jeps/419[JEP 419: Foreign Function & Memory API (Second Incubator)], simpler API, support for more carrier types
 
 === goals
 

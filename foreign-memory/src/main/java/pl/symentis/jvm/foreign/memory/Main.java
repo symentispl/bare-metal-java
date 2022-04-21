@@ -75,12 +75,12 @@ public class Main
 
         try ( var resourceScope = ResourceScope.newConfinedScope() )
         {
-            var memorySegment = MemorySegment.allocateNative( struct, resourceScope );
             SegmentAllocator segmentAllocator = SegmentAllocator.nativeAllocator( resourceScope );
-            var string = segmentAllocator.allocateUtf8String( "Wielkiego Stacha 16b, Psie Pole" );
-
-//            out.println( "set address.street field as address handle" + asAddressVarHandle.toMethodHandle( VarHandle.AccessMode.SET ).type() );
-//            asAddressVarHandle.set( memorySegment, string.address() );
+            MemorySegment structSegment = segmentAllocator.allocate( struct );
+            var stringSegment = segmentAllocator.allocateUtf8String( "Wielkiego Stacha 16b, Psie Pole" );
+            streetVarHandle.set( structSegment, stringSegment.address() );
+            MemoryAddress o = (MemoryAddress) streetVarHandle.get( structSegment );
+            out.println( o.getUtf8String( 0 ) );
         }
     }
 }
