@@ -1,4 +1,4 @@
-package pl.symentis.alge;
+package pl.symentis.jvm.foreign;
 
 import jdk.incubator.foreign.*;
 import pl.symentis.foreign.posix.errno.errno_h;
@@ -12,7 +12,6 @@ public class PosixQueueReceiver {
     private static int MSG_SIZE = 8192;
 
     public static void main(String[] args) {
-        System.loadLibrary("rt");
         try (var resourceScope = ResourceScope.newConfinedScope()) {
 
             var segmentAllocator = SegmentAllocator.nativeAllocator(resourceScope);
