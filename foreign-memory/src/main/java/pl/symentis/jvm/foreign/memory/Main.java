@@ -36,7 +36,7 @@ public class Main {
             var memorySegment = MemorySegment.allocateNative(1024, resourceScope);
             var offset = 512;
             var value = 2048;
-            varHandleGet.set(memorySegment, offset, value);
+            varHandleSet.set(memorySegment, offset, value);
 
             out.println("value = " + varHandleGet.get(memorySegment, offset));
 
@@ -49,7 +49,8 @@ public class Main {
 
     public static void withMemoryLayout() {
         var sequenceLayout = MemoryLayout.sequenceLayout(1024, CLinker.C_INT);
-        var seqVarHandle = sequenceLayout.varHandle(int.class, MemoryLayout.PathElement.sequenceElement(0));
+        var seqVarHandle = sequenceLayout.varHandle(int.class,
+                MemoryLayout.PathElement.sequenceElement(1));
         out.println("set array[0] method handle type: " + seqVarHandle.toMethodHandle(VarHandle.AccessMode.SET).type());
         out.println("get array[0] method handle type: " + seqVarHandle.toMethodHandle(VarHandle.AccessMode.GET).type());
 

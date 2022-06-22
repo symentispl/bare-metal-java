@@ -1,1 +1,1 @@
-rootProject.name = "fast-enough"
+rootProject.name = "bare-metal-java"
