@@ -1,3 +1,1 @@
-module pl.symentis.jvm.foreign.memory {
-    requires jdk.incubator.foreign;
-}
+module pl.symentis.jvm.foreign.memory {}

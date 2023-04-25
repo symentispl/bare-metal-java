@@ -1,0 +1,233 @@
+== vectorization
+
+[source,java]
+----
+x1=y1+z1;
+x2=y2+z2;
+x3=y3+z3;
+x4=y4+z4;
+----
+
+=== !
+
+[source,java]
+----
+[y1,y2,y3,y4]+[z1,z2,z3,z4]
+----
+
+=== nothing new
+
+SIMD (Single Instruction Multiple Data)
+
+x86 SSE and AVX extensions +
+add new instructions and wide registers
+
+=== !
+
+JVM has support for it for a long time +
+
+but you have almost no control over it
+
+=== intrinsics
+
+`Arrays.fill()` +
+`System.arrayCopy()`
+
+these methods have their optimized stubs (not a JNI call)
+
+=== C2 optimizations
+
+JIT tries hard to recognize a patterns in you code and transform it using SIMD
+
+hint: run below code with and without -XX:-UseSuperWord
+
+[source,java]
+----
+float[] a = ...
+
+for (int i = 0; i < a.length; i++) {
+    a[i] = a[i] * a[i];
+}
+----
+
+=== !
+
+http://groups.csail.mit.edu/commit/papers/00/SLP-PLDI-2000.pdf[Exploiting Superword Level Parallelism with Multimedia InstructionSets] +
+http://psy-lob-saw.blogspot.com/2015/04/on-arraysfill-intrinsics-superword-and.html[On Arrays.fill, Intrinsics, SuperWord and SIMD instructions] +
+https://richardstartin.github.io/tags/vector[Richard Startin's Blog, Vectorisation]
+
+=== !
+
+[quote,Richard Starin,Vectorised Algorithms in Java]
+Because AVX can reduce the processor frequency, it’s not always profitable to vectorise, so compilers employ cost models to decide when they should do so.
+Such cost models require platform specific calibration, and sometimes C2 can get it wrong
+
+=== vector api
+
+https://openjdk.java.net/jeps/414[JEP 414: Vector API (Second Incubator)]
+
+=== goals
+
+Clear and concise API — The API should be capable of clearly and concisely expressing a wide range of vector computations consisting of sequences of vector operations composed within loops and possibly with control flow.
+It should be possible to express a computation that is generic with respect to vector size, or the number of lanes per vector, thus enabling such computations to be portable across hardware supporting different vector sizes
+
+=== goals
+
+Platform agnostic — The API should be CPU architecture agnostic, enabling implementations on multiple architectures supporting vector instructions.
+As is usual in Java APIs, where platform optimization and portability conflict then the bias will be toward making the API portable, even if that results in some platform-specific idioms not being expressible in portable code.
+
+=== goals
+
+Reliable runtime compilation and performance on x64 and AArch64 architectures — On capable x64 architectures the Java runtime, specifically the HotSpot C2 compiler, should compile vector operations to corresponding efficient and performant vector instructions, such as those supported by Streaming SIMD Extensions (SSE) and Advanced Vector Extensions (AVX).
+Developers should have confidence that the vector operations they express will reliably map closely to relevant vector instructions.
+On capable ARM AArch64 architectures C2 will, similarly, compile vector operations to the vector instructions supported by NEON.
+
+=== goals
+
+Graceful degradation — Sometimes a vector computation cannot be fully expressed at runtime as a sequence of vector instructions, perhaps because the architecture does not support some of the required instructions.
+In such cases the Vector API implementation should degrade gracefully and still function.
+This may involve issuing warnings if a vector computation cannot be efficiently compiled to vector instructions.
+On platforms without vectors, graceful degradation will yield code competitive with manually-unrolled loops, where the unroll factor is the number of lanes in the selected vector.
+
+=== core concepts
+
+[ditaa]
+....
+vector0
++--------+--------+--------+--------+
+| lane 0 | lane 1 | lane 2 | lane 3 |
++--------+--------+--------+--------+
+
+vector1
++--------+--------+--------+--------+
+| lane 0 | lane 1 | lane 2 | lane 3 |
++--------+--------+--------+--------+
+....
+
+=== lane wise operation
+
+[ditaa]
+....
++--------+--------+--------+--------+
+| lane 0 | lane 1 | lane 2 | lane 3 |
++--------+--------+--------+--------+
+    |
+    | lane wise operation
+    v
++--------+--------+--------+--------+
+| lane 0 | lane 1 | lane 2 | lane 3 |
++--------+--------+--------+--------+
+....
+
+=== !
+
+[quote,,JEP 414]
+A lane-wise operation applies a scalar operator, such as addition, to each lane of one or more vectors in parallel.
+A lane-wise operation usually, but not always, produces a vector of the same length and shape.
+Lane-wise operations are further classified as unary, binary, ternary, test, or conversion operations.
+
+=== cross lane operation
+
+[ditaa]
+....
++--------+--------+--------+--------+
+| lane 0 | lane 1 | lane 2 | lane 3 |
++--------+--------+--------+--------+
+    |       ^
+    |       | cross lane operation
+    +-------+
+....
+
+=== !
+
+[quote,,JEP 414]
+A cross-lane operation applies an operation across an entire vector.
+A cross-lane operation produces either a scalar or a vector of possibly a different shape.
+Cross-lane operations are further classified as permutation or reduction operations.
+
+=== vector shapes
+
+[quote,,JEP 414]
+The shape of a vector governs how an instance of Vector<E> is mapped to a hardware vector register when vector computations are compiled by the HotSpot C2 compiler.
+The length of a vector, i.e., the number of lanes or elements, is the vector size divided by the element size.
+
+=== at runtime
+
+[quote,,JEP 414]
+The Vector API has two implementations.
+The first implements operations in Java, thus it is functional but not optimal.
+The second defines intrinsic vector operations for the HotSpot C2 run-time compiler so that it can compile vector computations to appropriate hardware registers and vector instructions when available.
+
+=== !
+
+[quote,,JEP 414]
+To avoid an explosion of C2 intrinsics we define generalized intrinsics corresponding to the various kinds of operations such as unary, binary, conversion, and so on, which take a parameter describing the specific operation to be performed.
+Approximately twenty new intrinsics support the intrinsification of the entire API.
+
+=== vector operations
+
+[source,java]
+----
+static final VectorSpecies<Float> SPECIES = FloatVector.SPECIES_PREFERRED;
+
+void vectorComputation(float[] a, float[] b, float[] c) {
+    int i = 0;
+    int upperBound = SPECIES.loopBound(a.length);
+    for (; i < upperBound; i += SPECIES.length()) {
+        // FloatVector va, vb, vc;
+        var va = FloatVector.fromArray(SPECIES, a, i);
+        var vb = FloatVector.fromArray(SPECIES, b, i);
+        var vc = va.mul(va)
+                   .add(vb.mul(vb))
+                   .neg();
+        vc.intoArray(c, i);
+    }
+
+    // no SIMD
+    for (; i < a.length; i++) {
+        c[i] = (a[i] * a[i] + b[i] * b[i]) * -1.0f;
+    }
+}
+----
+
+=== WARNING!!!
+
+[quote,,JEP 414]
+This implementation achieves optimal performance on large arrays.
+
+=== you may ask yourself how large?
+
+[role=highlight_section_title]
+=== demo
+
+image::pexels-web-donut-19101.jpg[background]
+
+=== !
+
+if it doesn't make sens, your not alone
+
+=== !
+
+* no, it is not because there are allocations (scalar replacement, not sure)
+* this code is heavily inlined with `@ForceInline`
+* looks like generated intrinsics are not optimal (yet)
+
+=== why bother?
+
+C2 will not always recognize your code as _vectorizable_, +
+then use Vector API +
+(first measure, profile, adapt)
+
+=== !
+
+[quote,,JEP 414]
+it seems that auto-vectorization of scalar code is not a reliable tactic for optimizing ad-hoc user-written loops unless the user pays unusually careful attention to unwritten contracts about exactly which loops a compiler is prepared to auto-vectorize.
+It is too easy to write a loop that fails to auto-vectorize, for a reason that no human reader can detect.
+Years of work on auto-vectorization, even in HotSpot, have left us with lots of optimization machinery that works only on special occasions.
+We want to enjoy the use of this machinery more often!
+
+=== what's next?
+
+* frozen arrays
+* primitive objects (part of Valhalla)
+* low-level concurrency controls (VarHandles)

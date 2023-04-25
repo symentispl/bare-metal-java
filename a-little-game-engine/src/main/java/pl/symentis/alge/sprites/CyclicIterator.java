@@ -4,7 +4,7 @@ import java.util.Collection;
 import java.util.Iterator;
 
 public class CyclicIterator<E, C extends Collection<E>> implements Iterator<E> {
-    final private C mElements;
+    private final C mElements;
     private Iterator<E> mIterator;
 
     public CyclicIterator(C elements) {

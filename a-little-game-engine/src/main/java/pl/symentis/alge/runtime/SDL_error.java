@@ -1,21 +1,19 @@
 package pl.symentis.alge.runtime;
 
-import jdk.incubator.foreign.*;
-
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodType;
 
 public class SDL_error {
 
-    private static final MethodHandle SDL_GetError_mh = CLinker.getInstance()
-            .downcallHandle(
-                    SDLRuntime.lookupSymbol("SDL_GetError"),
-                    MethodType.methodType(MemoryAddress.class),
-                    FunctionDescriptor.of(CLinker.C_POINTER));
+    private static final MethodHandle SDL_GetError_mh = Linker.nativeLinker()
+            .downcallHandle(SDLRuntime.lookupSymbol("SDL_GetError"), FunctionDescriptor.of(ValueLayout.ADDRESS));
 
     static String getError() {
         try {
-            return CLinker.toJavaString((MemoryAddress) SDL_GetError_mh.invoke());
+            return ((MemorySegment) SDL_GetError_mh.invoke()).getUtf8String(0);
         } catch (Throwable e) {
             throw new SDLException(e);
         }

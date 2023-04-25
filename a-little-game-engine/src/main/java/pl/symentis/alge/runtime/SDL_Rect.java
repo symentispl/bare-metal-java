@@ -1,22 +1,25 @@
 package pl.symentis.alge.runtime;
 
-import jdk.incubator.foreign.*;
-
-import java.lang.invoke.VarHandle;
-
-import static jdk.incubator.foreign.CLinker.C_INT;
+import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SegmentScope;
+import java.lang.foreign.ValueLayout;
+import java.lang.invoke.VarHandl
 
 public class SDL_Rect {
 
     static final MemoryLayout layout = MemoryLayout.structLayout(
-            C_INT.withName("x"), C_INT.withName("y"), C_INT.withName("w"), C_INT.withName("h"));
-    private static final VarHandle x_vh = layout.varHandle(int.class, MemoryLayout.PathElement.groupElement("x"));
-    private static final VarHandle y_vh = layout.varHandle(int.class, MemoryLayout.PathElement.groupElement("y"));
-    private static final VarHandle w_vh = layout.varHandle(int.class, MemoryLayout.PathElement.groupElement("w"));
-    private static final VarHandle h_vh = layout.varHandle(int.class, MemoryLayout.PathElement.groupElement("h"));
+            ValueLayout.JAVA_INT.withName("x"),
+            ValueLayout.JAVA_INT.withName("y"),
+            ValueLayout.JAVA_INT.withName("w"),
+            ValueLayout.JAVA_INT.withName("h"));
+    private static final VarHandle x_vh = layout.varHandle(MemoryLayout.PathElement.groupElement("x"));
+    private static final VarHandle y_vh = layout.varHandle(MemoryLayout.PathElement.groupElement("y"));
+    private static final VarHandle w_vh = layout.varHandle(MemoryLayout.PathElement.groupElement("w"));
+    private static final VarHandle h_vh = layout.varHandle(MemoryLayout.PathElement.groupElement("h"));
 
     public static SDL_Rect create(int x, int y, int w, int h) {
-        var memorySegment = MemorySegment.allocateNative(layout, ResourceScope.globalScope());
+        var memorySegment = MemorySegment.allocateNative(layout, SegmentScope.global());
         x(memorySegment, x);
         y(memorySegment, y);
         w(memorySegment, w);
@@ -47,7 +50,7 @@ public class SDL_Rect {
     }
 
     public void moveX() {
-        x(wrapped,x(wrapped)+1);
+        x(wrapped, x(wrapped) + 1);
     }
 
     private static int x(MemorySegment wrapped) {

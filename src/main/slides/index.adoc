@@ -1,4 +1,4 @@
-= Bare metal Java
+= Black metal Java
 :idprefix:
 :stem: asciimath
 :backend: html
@@ -13,11 +13,7 @@
 :imagesdir: images
 :customcss: css/custom.css
 :icons: font
-
-[role=highlight_section_title]
-== Bare metal java
-
-image::pexels-pixabay-327049.jpg[background]
+:title-slide-background-image: pexels-eberhard-grossgasteiger-1287075.jpg
 
 == about me
 
@@ -30,8 +26,7 @@ speaker, coder, architect
 
 founder of SegFault (https://segfault.events) conference +
 godfather of Programistyczna Grupa Rozwoju +
-and proud father of new baby, **JVM Club** (working title) +
-first meeting next week, 28 of June in Kraków
+and proud father of new baby, **JVM Club** (working title) 
 
 == DISCLAIMER
 
@@ -149,94 +144,82 @@ not official API,
 
 image::https://media.giphy.com/media/yvBAuESRTsETqNFlEl/giphy.gif[background]
 
-=== it takes five
+=== trial and error
 
 * first proposed by JEP 370 and targeted to Java 14
 * and later re-incubated by JEP 383 which was targeted to Java 15
 * third proposal https://openjdk.java.net/jeps/393[JEP 393: Foreign-Memory Access API (Third Incubator)] released with Java 16
 * fourth proposal https://openjdk.java.net/jeps/412[JEP 412: Foreign Function & Memory API (Incubator)] (merge of two JEPs, but more about it later)
 * fifth proposal JEP https://openjdk.org/jeps/419[419: Foreign Function & Memory API (Second Incubator)]
+* Java 19, finally in preview
+* Java 20, one more preview :)
+
+=== when this is going to end?
+
+image::https://media.giphy.com/media/3oEduIwLTB806poveg/giphy.gif[background]
 
 === !
 
-all examples here are based on Java 17 +
-(and if noted, Java 19 Early access Panama build)
+all examples here are based on Java 20
 
 === goals
 
-[quote,,JEP 412]
-Generality: A single API should be able to operate on various kinds of foreign memory (e.g., native memory, persistent memory, managed heap memory, etc.).
+[quote,,JEP 434]
+Ease of use — Replace the Java Native Interface (JNI) with a superior, pure-Java development model.
 
 === goals
 
-[quote,,JEP 412]
-Safety: It should not be possible for the API to undermine the safety of the JVM, regardless of the kind of memory being operated upon.
+[quote,,]
+    Performance — Provide performance that is comparable to, if not better than, existing APIs such as JNI and sun.misc.Unsafe.
 
 === goals
 
-[quote,,JEP 412]
-Control: Clients should have options as to how memory segments are to be deallocated: either explicitly (via a method call) or implicitly (when the segment is no longer in use).
+[quote,,]
+    Generality — Provide ways to operate on different kinds of foreign memory (e.g., native memory, persistent memory, and managed heap memory) and, over time, to accommodate other platforms (e.g., 32-bit x86) and foreign functions written in languages other than C (e.g., C++, Fortran).
 
 === goals
 
-[quote,,JEP 412]
-Usability: For programs that need to access foreign memory, the API should be a compelling alternative to legacy Java APIs such as sun.misc.Unsafe.
+[quote,,]
+    Safety — Allow programs to perform unsafe operations on foreign memory, but warn users about such operations by default.
 
-=== motivation
+=== non-goals
 
-[quote,,JEP 412]
-Many Java programs access foreign memory, such as Ignite, mapDB, memcached, Lucene, and Netty's ByteBuf API.
+[quote,,]
+Re-implement JNI on top of this API, or otherwise change JNI in any way;
+
+=== non-goals
+
+[quote,,]
+Re-implement legacy Java APIs, such as sun.misc.Unsafe, on top of this API;
+
+=== non-goals
+
+[quote,,]
+Provide tooling that mechanically generates Java code from native-code header files; or
+
+=== non-goals
+
+[quote,,]
+Change how Java applications that interact with native libraries are 
+packaged and deployed (e.g., via multi-platform JAR files).
+
+== The Foreign-Memory Access API
+
+[quote,,]
+Objects created with the new keyword are stored in the JVM's heap, where they are subject to garbage collection when no longer needed. However, the cost and unpredictability associated with garbage collection is unacceptable for performance-critical libraries such as Tensorflow, Ignite, Lucene, and Netty. They need to store data outside the heap, in off-heap memory which they allocate and deallocate themselves. Access to off-heap memory also allows data to be serialized and deserialized by mapping files directly into memory via, e.g., mmap.
 
 === !
 
-By doing so they can:
-
-* Avoid the cost and unpredictability associated with garbage collection (especially when maintaining large caches);
-* Share memory across multiple processes; and
-* Serialize and deserialize memory content by mapping files into memory (via, e.g., mmap).
-
-=== The Foreign-Memory Access API
-
-* MemorySegment & ResourceScope
-* MemoryAddress
+* MemorySegment 
+* SegmentScope
 * MemoryLayout
 
 === MemorySegment
 
 models a contiguous memory region with given spatial and temporal bounds, +
-any access outside spatial or temporal bounds will end upt with exception
+any access outside spatial or temporal bounds will end up with exception
 
-[source,java]
-----
-import jdk.incubator.foreign.*;
-
-try (var resourceScope = ResourceScope.newConfinedScope()) {
-    var memorySegment = MemorySegment.allocateNative(1024, resourceScope);
-}
-----
-
-=== !
-
-[source,java]
-----
-import jdk.incubator.foreign.*;
-
-var resourceScope = ResourceScope.newImplicitScope();
-var memorySegment = MemorySegment.allocateNative(1024, resourceScope);
-resourceScope.close(); // hi, manual memory management
-----
-
-=== !
-
-[source,java]
-----
-import jdk.incubator.foreign.*;
-import java.lang.ref.Cleaner;
-
-var cleaner = Cleaner.create(); //uses PhantomReferences and ReferenceQueue
-var resourceScope = ResourceScope.newImplicitScope(cleaner);
-var memorySegment = MemorySegment.allocateNative(1024)); // GC will cleanup this segment
-----
+memory addresses are now modeled by zero-length memory segments, it used to `MemoryAddress` class
 
 === !
 
@@ -246,6 +229,20 @@ memory segment can be:
 * off-heap
 * memory mapped file
 * NVRAM (https://openjdk.java.net/jeps/352[JEP 352: Non-Volatile Mapped Byte Buffers])
+
+=== bounds
+
+Every memory segments has bounds, spatial and temporal
+
+* Every memory segment has a size
+* Every memory segment is associated with a scope
+* Access operations on a memory segment are subject to the thread-confinement checks enforced by the associated scope
+
+=== arena
+
+An arena controls the lifecycle of memory segments, providing both flexible allocation and timely deallocation.
+
+An arena has a scope, called the arena scope. When the arena is closed, the arena scope is no longer alive. As a result, all the segments associated with the arena scope are invalidated, safely and atomically, their backing memory regions are deallocated (where applicable) and can no longer be accessed after the arena is closed
 
 === thread confinement
 
@@ -257,45 +254,11 @@ you can use _shared scope_ to make segment shareable between threads
 
 === dereferencing memory
 
-* `MemoryHandles` is based on same concepts as `VarHandle`
-* to obtain a memory access var handle, clients must start from `MemoryLayout.varHandle(Class<?> carrier, PathElement... elements)` or 'MemoryHandles.varHandle(Class<?> carrier, ByteOrder byteOrder)' or `MemoryHandles.varHandle(Class<?> carrier, long alignmentBytes, ByteOrder byteOrder)`
+* to obtain a memory access var handle, clients must start from `MemoryLayout.varHandle(Class<?> carrier, PathElement... elements)`
 * This determines the variable type (all primitive types but void and boolean are supported), as well as the alignment constraint, and the byte order associated to a memory access var handle.
 * `carrier` type is _primitive_ type which will carry value of memory segment
 * The resulting memory access var handle can then be combined in various ways to emulate different addressing modes.
 * The var handles created by this class feature a mandatory coordinate type (of type MemorySegment), and one long coordinate type, which represents the offset, in bytes, relative to the segment, at which dereference should occur.
-
-=== sounds cryptic?
-
-[source,java]
-----
-import jdk.incubator.foreign.*;
-import java.nio.ByteOrder;
-import java.lang.invoke.VarHandle;
-
-var varHandleGet = MemoryHandles.varHandle(int.class, ByteOrder.nativeOrder());
-out.println("Var handle for GET access mode: " + varHandleGet.toMethodHandle(VarHandle.AccessMode.GET).type());
-
-var varHandleSet = MemoryHandles.varHandle(int.class, ByteOrder.nativeOrder());
-out.println("Var handle for SET access mode: " + varHandleSet.toMethodHandle(VarHandle.AccessMode.SET).type());
-
-try (var resourceScope = ResourceScope.newConfinedScope()) {
-    var memorySegment = MemorySegment.allocateNative(1024, resourceScope);
-    var offset = 512;
-    var value = 2048;
-    varHandleGet.set(memorySegment, offset, value);
-
-    out.println("value = " + varHandleGet.get(memorySegment, offset));
-
-    var varHandle = MemoryHandles.insertCoordinates(varHandleGet, 1, offset);
-    out.println("modified var handle for GET access mode" + varHandle.toMethodHandle(VarHandle.AccessMode.GET).type());
-    out.println("value = " + varHandle.get(memorySegment));
-}
-----
-
-=== !
-
-[quote,,JEP-412]
-To make the FFM API more approachable, the MemoryAccess class provides static accessors to dereference memory segments without the need to construct memory-access var handles.
 
 === MemoryLayout
 
@@ -319,64 +282,32 @@ struct {
 }
 ----
 
-=== memory layout
-
-[source,java]
-----
-import jdk.incubator.foreign.*;
-
- var struct = MemoryLayout.structLayout(
-                CLinker.C_INT.withName("age"),
-                CLinker.C_INT.withName("kids"),
-                CLinker.C_POINTER.withName("birthDate"),
-                MemoryLayout.structLayout(CLinker.C_POINTER.withName("street"))
-                        .withName("address"));
- var streetVarHandle = struct.varHandle(long.class, groupElement("address"), groupElement("street"));
- out.println("set address.street field in struct method handle type: " + streetVarHandle.toMethodHandle(VarHandle.AccessMode.SET).type());
- out.println("get address.street field in struct method handle type: " + streetVarHandle.toMethodHandle(VarHandle.AccessMode.GET).type());
-
- try (var resourceScope = ResourceScope.newConfinedScope()) {
-     var memorySegment = MemorySegment.allocateNative(struct, resourceScope);
-     var string = CLinker.toCString("Wielkiego Stacha 16b, Psie Pole", resourceScope);
-     var asAddressVarHandle = MemoryHandles.asAddressVarHandle(streetVarHandle);
-
-     asAddressVarHandle.set(memorySegment, string.address());
- }
-----
-
 === alignment, padding and access modes
 
 * data structure alignment, unaligned access will throw exception,
 * memory layout supports padding,
-* var handles on memory segments can use `MemoryAccess` modes (atomic, volatile, acquire-get), please read documentation, there are rules around padding and sizes
+* var handles on memory segments can use `MemoryAccess` modes (atomic, volatile, acquire-get)
 
 === unsafe memory segments
-
-[quote,,JEP 412]
-Dereference operations are only possible on memory segments. Since a memory segment has spatial and temporal bounds, the Java runtime can always ensure that memory associated with a given segment is dereferenced safely. However, there are situations where clients might only have a MemoryAddress instance, as is often the case when interacting with native code. Since the Java runtime has no way to know the spatial and temporal bounds associated with a memory address, directly dereferencing memory addresses is forbidden by the FFM API.
-
-=== !
 
 *Since the Java runtime has no way to know the spatial and temporal bounds associated with a memory address, directly dereferencing memory addresses is forbidden by the FFM API*
 
 === !
 
-what if dont' have `MemorySegment` but just a `MemoryAddress`? +
-(like in examples in section to follow)
+what if dont' have `MemorySegment` but just a memory address? +
 
-=== !
+=== unlock your seat belts
 
-* If the address is known to fall within a memory segment, the client can perform a rebase operation via MemoryAddress::segmentOffset. The rebasing operation re-interprets the address's offset relative to the segment's base address to yield a new offset which can be applied to the existing segment — which can then be safely dereferenced
-* Alternatively, if no such segment exists then the client can create one unsafely, using the MemoryAddress::asSegment factory. This factory effectively attaches fresh spatial and temporal bounds to an otherwise raw memory address, so as to allow dereference operations. The memory segment returned by this factory is unsafe: A raw memory address might be associated with a memory region that is 10 bytes long, but the client might accidentally overestimate the size of the region and create an unsafe memory segment that is 100 bytes long. This might result, later, in attempts to dereference memory outside the bounds of the memory region associated with the unsafe segment, which might cause a JVM crash or, worse, result in silent memory corruption. For this reason, creating unsafe segments is regarded as a restricted operation, and is disabled by default
+image::https://media.giphy.com/media/kjlJDEzuDu0qQ/giphy.gif[background]
 
 === safety
 
-[quote,,JEP-412]
+[quote,,]
 To enable access to unsafe methods for code in some module M, specify java --enable-native-access=M on the command line.
 
 === things we didn't discuss
 
-* `SegmentAllocator` and custom allocators
+* `SegmentAllocator`
 * memory access mode (whole new separate presentation)
 
 === hello C
@@ -400,68 +331,27 @@ The initial scope of this effort aims at providing high quality, fully optimized
 
 The Foreign Linker API and implementation should be flexible enough to, over time, accommodate support for other platforms (e.g., 32-bit x86) and foreign functions written in languages other than C (e.g. C++, Fortran).
 
-=== say hi to `CLinker`
+=== say hi to `Linker`
 
 * downcalls (e.g. calls from Java to native code), the downcallHandle method can be used to model native functions as plain MethodHandle objects.
 * upcalls (e.g. calls from native back to Java code), the upcallStub method can be used to convert an existing MethodHandle (which might point to some Java method) into a MemorySegment, which can then be passed to a native function as a function pointer.
 
 === center of the universe
 
-* CLinker
+* Linker
 * SymbolLookup
 * FunctionDescriptor
 
 === downcalls
 
-[source,java]
-----
-var libraryLookup = CLinker.systemLookup();
-
-var getpidSymbol = libraryLookup.lookup("getpid")
-                .orElseThrow(() -> new RuntimeException("getpid symbol not found"));
-
-var functionDescriptor = FunctionDescriptor.of(CLinker.C_INT);
-var methodType = MethodType.methodType(int.class);
-var methodHandle = CLinker.getInstance().downcallHandle(getpidSymbol,
-                                                        methodType,
-                                                        functionDescriptor);
-System.out.println(methodHandle.invoke());
-----
+[quote,,]
+Linking a foreign function is a process which requires a function descriptor, a set of memory layouts which, together, specify the signature of the foreign function to be linked, and returns, when complete, a downcall method handle, that is, a method handle that can be used to invoke the target foreign function.
 
 === upcalls
 
-[source,java]
-----
-import jdk.incubator.foreign.CLinker;
-import jdk.incubator.foreign.FunctionDescriptor;
-import jdk.incubator.foreign.LibraryLookup;
-import jdk.incubator.foreign.MemoryAddress;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import static java.lang.System.out;
-
-        var symbolLookup = CLinker.systemLookup();
-
-        var cLinker = CLinker.getInstance();
-
-        out.println("creating signal handler stub");
-        // QUESTION: why the hell global scope?
-        var resourceScope = ResourceScope.globalScope();
-        var signalHandler = MethodHandles.lookup()
-                .findStatic(SIGTERM.class, "onSignal",
-                        MethodType.methodType(void.class, int.class));
-        var signalHandlerStub = cLinker.upcallStub(signalHandler,
-                FunctionDescriptor.ofVoid(CLinker.C_INT), resourceScope);
-
-        out.println("installing signal handler " + signalHandlerStub);
-        var signal = symbolLookup.lookup("signal")
-                .orElseThrow(() -> new RuntimeException("signal symbol not found"));
-        var signalHandle = cLinker.downcallHandle(signal,
-                MethodType.methodType(void.class, int.class, MemoryAddress.class),
-                FunctionDescriptor.ofVoid(CLinker.C_INT, CLinker.C_POINTER));
-        out.println(signalHandle.type());
-        signalHandle.invoke(15, signalHandlerStub.address());
-----
+[quote,,]
+Creating an upcall stub requires a method handle and a function descriptor; in this case, the set of memory layouts in the function descriptor specify the signature of the function pointer associated with the upcall stub. 
+Upcall stubs are modelled by instances of type MemorySegmentPREVIEW; upcall stubs can be passed by reference to other downcall method handles and, they are released via their associated scope
 
 === !
 
@@ -487,240 +377,23 @@ it generates Java code from C header files
 
     jextract -d ${build.directory}/generated-sources -t pl.symentis.foreign.posix --source /usr/include/mqueue.h
 
-=== end of part one and &#190;
+=== what's in it for you?
 
-== vectorization
-
-[source,java]
-----
-x1=y1+z1;
-x2=y2+z2;
-x3=y3+z3;
-x4=y4+z4;
-----
+=== nothing?
 
 === !
 
-[source,java]
-----
-[y1,y2,y3,y4]+[z1,z2,z3,z4]
-----
+* when working with huge in-memory data sets, this way you can avoid GC
+* interacting with non-JVM and JVM processes over share memory (via memory mapped files)
+* C coding is no longer required to call native code in a platform agnostic way (but you still need to understand pointers, addressing modes and how memory works)
+* all the libraries code you use, like database drivers, ML algorithms and Big Data, will benefit from safer and stable API 
+* it would be easier to use low-level OS functions, Java will faster adapt to every changing OSs and hardware ecosystems, one example is io_uring
 
-=== nothing new
+=== food for thought
 
-SIMD (Single Instruction Multiple Data)
+* will Java replace Python in data science? probably not, but it maybe easier to make production grade ML models with Java
+* will next Cyberpunk be written in JVM? probably not, but it is fun to think about
 
-x86 SSE and AVX extensions +
-add new instructions and wide registers
+== keep on rockin' and stay safe
 
-=== !
-
-JVM has support for it for a long time +
-
-but you have almost no control over it
-
-=== intrinsics
-
-`Arrays.fill()` +
-`System.arrayCopy()`
-
-these methods have their optimized stubs (not a JNI call)
-
-=== C2 optimizations
-
-JIT tries hard to recognize a patterns in you code and transform it using SIMD
-
-hint: run below code with and without -XX:-UseSuperWord
-
-[source,java]
-----
-float[] a = ...
-
-for (int i = 0; i < a.length; i++) {
-    a[i] = a[i] * a[i];
-}
-----
-
-=== !
-
-http://groups.csail.mit.edu/commit/papers/00/SLP-PLDI-2000.pdf[Exploiting Superword Level Parallelism with Multimedia InstructionSets] +
-http://psy-lob-saw.blogspot.com/2015/04/on-arraysfill-intrinsics-superword-and.html[On Arrays.fill, Intrinsics, SuperWord and SIMD instructions] +
-https://richardstartin.github.io/tags/vector[Richard Startin's Blog, Vectorisation]
-
-=== !
-
-[quote,Richard Starin,Vectorised Algorithms in Java]
-Because AVX can reduce the processor frequency, it’s not always profitable to vectorise, so compilers employ cost models to decide when they should do so.
-Such cost models require platform specific calibration, and sometimes C2 can get it wrong
-
-=== vector api
-
-https://openjdk.java.net/jeps/414[JEP 414: Vector API (Second Incubator)]
-
-=== goals
-
-Clear and concise API — The API should be capable of clearly and concisely expressing a wide range of vector computations consisting of sequences of vector operations composed within loops and possibly with control flow.
-It should be possible to express a computation that is generic with respect to vector size, or the number of lanes per vector, thus enabling such computations to be portable across hardware supporting different vector sizes
-
-=== goals
-
-Platform agnostic — The API should be CPU architecture agnostic, enabling implementations on multiple architectures supporting vector instructions.
-As is usual in Java APIs, where platform optimization and portability conflict then the bias will be toward making the API portable, even if that results in some platform-specific idioms not being expressible in portable code.
-
-=== goals
-
-Reliable runtime compilation and performance on x64 and AArch64 architectures — On capable x64 architectures the Java runtime, specifically the HotSpot C2 compiler, should compile vector operations to corresponding efficient and performant vector instructions, such as those supported by Streaming SIMD Extensions (SSE) and Advanced Vector Extensions (AVX).
-Developers should have confidence that the vector operations they express will reliably map closely to relevant vector instructions.
-On capable ARM AArch64 architectures C2 will, similarly, compile vector operations to the vector instructions supported by NEON.
-
-=== goals
-
-Graceful degradation — Sometimes a vector computation cannot be fully expressed at runtime as a sequence of vector instructions, perhaps because the architecture does not support some of the required instructions.
-In such cases the Vector API implementation should degrade gracefully and still function.
-This may involve issuing warnings if a vector computation cannot be efficiently compiled to vector instructions.
-On platforms without vectors, graceful degradation will yield code competitive with manually-unrolled loops, where the unroll factor is the number of lanes in the selected vector.
-
-=== core concepts
-
-[ditaa]
-....
-vector0
-+--------+--------+--------+--------+
-| lane 0 | lane 1 | lane 2 | lane 3 |
-+--------+--------+--------+--------+
-
-vector1
-+--------+--------+--------+--------+
-| lane 0 | lane 1 | lane 2 | lane 3 |
-+--------+--------+--------+--------+
-....
-
-=== lane wise operation
-
-[ditaa]
-....
-+--------+--------+--------+--------+
-| lane 0 | lane 1 | lane 2 | lane 3 |
-+--------+--------+--------+--------+
-    |
-    | lane wise operation
-    v
-+--------+--------+--------+--------+
-| lane 0 | lane 1 | lane 2 | lane 3 |
-+--------+--------+--------+--------+
-....
-
-=== !
-
-[quote,,JEP 414]
-A lane-wise operation applies a scalar operator, such as addition, to each lane of one or more vectors in parallel.
-A lane-wise operation usually, but not always, produces a vector of the same length and shape.
-Lane-wise operations are further classified as unary, binary, ternary, test, or conversion operations.
-
-=== cross lane operation
-
-[ditaa]
-....
-+--------+--------+--------+--------+
-| lane 0 | lane 1 | lane 2 | lane 3 |
-+--------+--------+--------+--------+
-    |       ^
-    |       | cross lane operation
-    +-------+
-....
-
-=== !
-
-[quote,,JEP 414]
-A cross-lane operation applies an operation across an entire vector.
-A cross-lane operation produces either a scalar or a vector of possibly a different shape.
-Cross-lane operations are further classified as permutation or reduction operations.
-
-=== vector shapes
-
-[quote,,JEP 414]
-The shape of a vector governs how an instance of Vector<E> is mapped to a hardware vector register when vector computations are compiled by the HotSpot C2 compiler.
-The length of a vector, i.e., the number of lanes or elements, is the vector size divided by the element size.
-
-=== at runtime
-
-[quote,,JEP 414]
-The Vector API has two implementations.
-The first implements operations in Java, thus it is functional but not optimal.
-The second defines intrinsic vector operations for the HotSpot C2 run-time compiler so that it can compile vector computations to appropriate hardware registers and vector instructions when available.
-
-=== !
-
-[quote,,JEP 414]
-To avoid an explosion of C2 intrinsics we define generalized intrinsics corresponding to the various kinds of operations such as unary, binary, conversion, and so on, which take a parameter describing the specific operation to be performed.
-Approximately twenty new intrinsics support the intrinsification of the entire API.
-
-=== vector operations
-
-[source,java]
-----
-static final VectorSpecies<Float> SPECIES = FloatVector.SPECIES_PREFERRED;
-
-void vectorComputation(float[] a, float[] b, float[] c) {
-    int i = 0;
-    int upperBound = SPECIES.loopBound(a.length);
-    for (; i < upperBound; i += SPECIES.length()) {
-        // FloatVector va, vb, vc;
-        var va = FloatVector.fromArray(SPECIES, a, i);
-        var vb = FloatVector.fromArray(SPECIES, b, i);
-        var vc = va.mul(va)
-                   .add(vb.mul(vb))
-                   .neg();
-        vc.intoArray(c, i);
-    }
-
-    // no SIMD
-    for (; i < a.length; i++) {
-        c[i] = (a[i] * a[i] + b[i] * b[i]) * -1.0f;
-    }
-}
-----
-
-=== WARNING!!!
-
-[quote,,JEP 414]
-This implementation achieves optimal performance on large arrays.
-
-=== you may ask yourself how large?
-
-[role=highlight_section_title]
-=== demo
-
-image::pexels-web-donut-19101.jpg[background]
-
-=== !
-
-if it doesn't make sens, your not alone
-
-=== !
-
-* no, it is not because there are allocations (scalar replacement, not sure)
-* this code is heavily inlined with `@ForceInline`
-* looks like generated intrinsics are not optimal (yet)
-
-=== why bother?
-
-C2 will not always recognize your code as _vectorizable_, +
-then use Vector API +
-(first measure, profile, adapt)
-
-=== !
-
-[quote,,JEP 414]
-it seems that auto-vectorization of scalar code is not a reliable tactic for optimizing ad-hoc user-written loops unless the user pays unusually careful attention to unwritten contracts about exactly which loops a compiler is prepared to auto-vectorize.
-It is too easy to write a loop that fails to auto-vectorize, for a reason that no human reader can detect.
-Years of work on auto-vectorization, even in HotSpot, have left us with lots of optimization machinery that works only on special occasions.
-We want to enjoy the use of this machinery more often!
-
-=== what's next?
-
-* frozen arrays
-* primitive objects (part of Valhalla)
-* low-level concurrency controls (VarHandles)
-
-== thank you
+image::https://media.giphy.com/media/u4p08LZeWVNTi/giphy.gif[background]

@@ -1,9 +1,12 @@
 package pl.symentis.alge.runtime;
 
-import jdk.incubator.foreign.*;
-
+import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SymbolLookup;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodType;
 import java.lang.ref.Cleaner;
 import java.nio.file.Path;
 
@@ -27,66 +30,58 @@ public final class SDLRuntime {
         this.cleaner = Cleaner.create();
     }
 
-    private static final MethodHandle SDL_createWindow_mh = CLinker.getInstance()
+    private static final MethodHandle SDL_createWindow_mh = Linker.nativeLinker()
             .downcallHandle(
                     SDLRuntime.lookupSymbol("SDL_CreateWindow"),
-                    MethodType.methodType(
-                            MemoryAddress.class,
-                            MemoryAddress.class,
-                            int.class,
-                            int.class,
-                            int.class,
-                            int.class,
-                            int.class),
                     FunctionDescriptor.of(
-                            CLinker.C_POINTER,
-                            CLinker.C_POINTER,
-                            CLinker.C_INT,
-                            CLinker.C_INT,
-                            CLinker.C_INT,
-                            CLinker.C_INT,
-                            CLinker.C_INT));
+                            ValueLayout.ADDRESS,
+                            ValueLayout.ADDRESS,
+                            ValueLayout.JAVA_INT,
+                            ValueLayout.JAVA_INT,
+                            ValueLayout.JAVA_INT,
+                            ValueLayout.JAVA_INT,
+                            ValueLayout.JAVA_INT));
 
     public SDL_Window createWindow(String title, int x, int y, int w, int h, int flags) {
-        var window = nullCheck(() -> (MemoryAddress) SDL_createWindow_mh.invoke(
-                CLinker.toCString(title, ResourceScope.globalScope()).address(), x, y, w, h, flags));
-        return new SDL_Window(window);
+        try (var arena = Arena.openConfined()) {
+            var window = nullCheck(() ->
+                    (MemorySegment) SDL_createWindow_mh.invoke(arena.allocateUtf8String(title), x, y, w, h, flags));
+            return new SDL_Window(window);
+        }
     }
 
-    private static final MethodHandle IMG_Load_mh = CLinker.getInstance()
+    private static final MethodHandle IMG_Load_mh = Linker.nativeLinker()
             .downcallHandle(
                     SDLRuntime.lookupSymbol("IMG_Load"),
-                    MethodType.methodType(MemoryAddress.class, MemoryAddress.class),
-                    FunctionDescriptor.of(CLinker.C_POINTER, CLinker.C_POINTER));
+                    FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
     public SDL_Surface loadImage(Path path) {
-        try (var resourceScope = ResourceScope.newConfinedScope()) {
-            var memoryAddress = (MemoryAddress) IMG_Load_mh.invoke(
-                    CLinker.toCString(path.toString(), resourceScope).address());
-            if (MemoryAddress.NULL.equals(memoryAddress)) {
+        try (var arena = Arena.openConfined()) {
+            var MemorySegment = (MemorySegment) IMG_Load_mh.invoke(arena.allocateUtf8String(path.toString()));
+            if (MemorySegment.NULL.equals(MemorySegment)) {
                 throw new NullPointerException(SDL_error.getError());
             }
-            var surface = new SDL_Surface(memoryAddress);
-            cleaner.register(surface, () -> SDL_Surface.freeSurface(memoryAddress));
+            var surface = new SDL_Surface(MemorySegment);
+            cleaner.register(surface, () -> SDL_Surface.freeSurface(MemorySegment));
             return surface;
         } catch (Throwable e) {
             throw new RuntimeException(e);
         }
     }
 
-    static MemoryAddress lookupSymbol(String name) throws SDLException {
+    static MemorySegment lookupSymbol(String name) throws SDLException {
         return SymbolLookup.loaderLookup()
-                .lookup(name)
+                .find(name)
                 .orElseThrow(() -> new SDLException(String.format("failed to load symbol '%s'", name)));
     }
 
-    static MemoryAddress nullCheck(CheckedSupplier<MemoryAddress> supplier) {
+    static MemorySegment nullCheck(CheckedSupplier<MemorySegment> supplier) {
         try {
-            var memoryAddress = supplier.get();
-            if (MemoryAddress.NULL.equals(memoryAddress)) {
+            var MemorySegment = supplier.get();
+            if (MemorySegment.NULL.equals(MemorySegment)) {
                 throw new NullPointerException(SDL_error.getError());
             }
-            return memoryAddress;
+            return MemorySegment;
         } catch (Throwable e) {
             throw new SDLException(e);
         }

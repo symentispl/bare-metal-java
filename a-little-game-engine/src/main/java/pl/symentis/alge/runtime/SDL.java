@@ -1,20 +1,18 @@
 package pl.symentis.alge.runtime;
 
-import jdk.incubator.foreign.CLinker;
-import jdk.incubator.foreign.FunctionDescriptor;
-
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodType;
 
 public class SDL {
 
     private static final int SDL_INIT_VIDEO = 0x00000020;
 
-    private static final MethodHandle SDL_Init_mh = CLinker.getInstance()
+    private static final MethodHandle SDL_Init_mh = Linker.nativeLinker()
             .downcallHandle(
                     SDLRuntime.lookupSymbol("SDL_Init"),
-                    MethodType.methodType(int.class, int.class),
-                    FunctionDescriptor.of(CLinker.C_INT, CLinker.C_INT));
+                    FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
 
     static void init() {
         try {

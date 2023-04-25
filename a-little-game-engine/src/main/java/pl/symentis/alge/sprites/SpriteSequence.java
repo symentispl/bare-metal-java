@@ -1,18 +1,15 @@
 package pl.symentis.alge.sprites;
 
-import pl.symentis.alge.runtime.SDLRuntime;
-import pl.symentis.alge.runtime.SDL_Surface;
-import pl.symentis.alge.runtime.SDL_image;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.text.ParseException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.regex.Pattern;
+import pl.symentis.alge.runtime.SDLRuntime;
+import pl.symentis.alge.runtime.SDL_Surface;
 
 public class SpriteSequence {
     private static Pattern pattern = Pattern.compile("(\\w+)_(\\d{2})_(\\w+)_(\\d{3})\\.(\\w+)");

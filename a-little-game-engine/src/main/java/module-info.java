@@ -1,3 +1,1 @@
-module pl.symentis.alge {
-    requires jdk.incubator.foreign;
-}
+module pl.symentis.alge {}

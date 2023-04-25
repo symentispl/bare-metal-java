@@ -1,134 +1,129 @@
 package pl.symentis.alge.runtime;
 
-import jdk.incubator.foreign.*;
+import static java.lang.foreign.MemoryLayout.PathElement.*;
 
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.GroupLayout;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 
 public class SDL_Surface {
 
     static final GroupLayout layout = MemoryLayout.structLayout(
-                    CLinker.C_INT.withName("flags"),
+                    ValueLayout.JAVA_INT.withName("flags"),
                     MemoryLayout.paddingLayout(32),
-                    CLinker.C_POINTER.withName("format"),
-                    CLinker.C_INT.withName("w"),
-                    CLinker.C_INT.withName("h"),
-                    CLinker.C_INT.withName("pitch"),
+                    ValueLayout.ADDRESS.withName("format"),
+                    ValueLayout.JAVA_INT.withName("w"),
+                    ValueLayout.JAVA_INT.withName("h"),
+                    ValueLayout.JAVA_INT.withName("pitch"),
                     MemoryLayout.paddingLayout(32),
-                    CLinker.C_POINTER.withName("pixels"),
-                    CLinker.C_POINTER.withName("userdata"),
-                    CLinker.C_INT.withName("locked"),
+                    ValueLayout.ADDRESS.withName("pixels"),
+                    ValueLayout.ADDRESS.withName("userdata"),
+                    ValueLayout.JAVA_INT.withName("locked"),
                     MemoryLayout.paddingLayout(32),
-                    CLinker.C_POINTER.withName("list_blitmap"),
+                    ValueLayout.ADDRESS.withName("list_blitmap"),
                     MemoryLayout.structLayout(
-                                    CLinker.C_INT.withName("x"),
-                                    CLinker.C_INT.withName("y"),
-                                    CLinker.C_INT.withName("w"),
-                                    CLinker.C_INT.withName("h"))
+                                    ValueLayout.JAVA_INT.withName("x"),
+                                    ValueLayout.JAVA_INT.withName("y"),
+                                    ValueLayout.JAVA_INT.withName("w"),
+                                    ValueLayout.JAVA_INT.withName("h"))
                             .withName("clip_rect"),
-                    CLinker.C_POINTER.withName("map"),
-                    CLinker.C_INT.withName("refcount"),
+                    ValueLayout.ADDRESS.withName("map"),
+                    ValueLayout.JAVA_INT.withName("refcount"),
                     MemoryLayout.paddingLayout(32))
             .withName("SDL_Surface");
-    private static final VarHandle w_vh = layout.varHandle(int.class, MemoryLayout.PathElement.groupElement("w"));
+    private static final VarHandle w_vh = layout.varHandle(groupElement("w"));
 
     static int w(MemorySegment memorySegment) {
         return (Integer) w_vh.get(memorySegment);
     }
 
-    private static final VarHandle h_vh = layout.varHandle(int.class, MemoryLayout.PathElement.groupElement("h"));
+    private static final VarHandle h_vh = layout.varHandle(groupElement("h"));
 
     public static int h(MemorySegment memorySegment) {
         return (Integer) h_vh.get(memorySegment);
     }
 
-    private static final VarHandle format_vh = MemoryHandles.asAddressVarHandle(
-            layout.varHandle(long.class, MemoryLayout.PathElement.groupElement("format")));
+    private static final VarHandle format_vh = layout.varHandle(groupElement("format"));
 
-    public static MemoryAddress format(MemorySegment memorySegment) {
-        return (MemoryAddress) format_vh.get(memorySegment);
+    public static MemorySegment format(MemorySegment memorySegment) {
+        return (MemorySegment) format_vh.get(memorySegment);
     }
 
-    private static final MethodHandle SDL_FillRect_mh = CLinker.getInstance()
+    private static final MethodHandle SDL_FillRect_mh = Linker.nativeLinker()
             .downcallHandle(
                     SDLRuntime.lookupSymbol("SDL_FillRect"),
-                    MethodType.methodType(int.class, MemoryAddress.class, MemoryAddress.class, int.class),
-                    FunctionDescriptor.of(CLinker.C_INT, CLinker.C_POINTER, CLinker.C_POINTER, CLinker.C_INT));
+                    FunctionDescriptor.of(
+                            ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
 
-    private static final MethodHandle SDL_BlitSurface_mh = CLinker.getInstance()
+    private static final MethodHandle SDL_BlitSurface_mh = Linker.nativeLinker()
             .downcallHandle(
                     SDLRuntime.lookupSymbol("SDL_UpperBlit"),
-                    MethodType.methodType(
-                            int.class,
-                            MemoryAddress.class,
-                            MemoryAddress.class,
-                            MemoryAddress.class,
-                            MemoryAddress.class),
                     FunctionDescriptor.of(
-                            CLinker.C_INT, CLinker.C_POINTER, CLinker.C_POINTER, CLinker.C_POINTER, CLinker.C_POINTER));
+                            ValueLayout.JAVA_INT,
+                            ValueLayout.ADDRESS,
+                            ValueLayout.ADDRESS,
+                            ValueLayout.ADDRESS,
+                            ValueLayout.ADDRESS));
 
-    private static final MethodHandle SDL_UpperBlitScaled_mh = CLinker.getInstance()
+    private static final MethodHandle SDL_UpperBlitScaled_mh = Linker.nativeLinker()
             .downcallHandle(
                     SDLRuntime.lookupSymbol("SDL_UpperBlitScaled"),
-                    MethodType.methodType(
-                            int.class,
-                            MemoryAddress.class,
-                            MemoryAddress.class,
-                            MemoryAddress.class,
-                            MemoryAddress.class),
                     FunctionDescriptor.of(
-                            CLinker.C_INT, CLinker.C_POINTER, CLinker.C_POINTER, CLinker.C_POINTER, CLinker.C_POINTER));
+                            ValueLayout.JAVA_INT,
+                            ValueLayout.ADDRESS,
+                            ValueLayout.ADDRESS,
+                            ValueLayout.ADDRESS,
+                            ValueLayout.ADDRESS));
 
-    private static final MethodHandle SDL_FreeSurface_mh = CLinker.getInstance()
-            .downcallHandle(
-                    SDLRuntime.lookupSymbol("SDL_FreeSurface"),
-                    MethodType.methodType(void.class, MemoryAddress.class),
-                    FunctionDescriptor.ofVoid(CLinker.C_POINTER));
+    private static final MethodHandle SDL_FreeSurface_mh = Linker.nativeLinker()
+            .downcallHandle(SDLRuntime.lookupSymbol("SDL_FreeSurface"), FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
 
-    private final MemoryAddress wrapped;
+    private final MemorySegment wrapped;
     private final MethodHandle SDL_FillRect_mh_$;
 
-    SDL_Surface(MemoryAddress wrapped) {
+    SDL_Surface(MemorySegment wrapped) {
         this.wrapped = wrapped;
-        SDL_FillRect_mh_$ = SDL_FillRect_mh.bindTo(wrapped.address());
+        SDL_FillRect_mh_$ = SDL_FillRect_mh.bindTo(wrapped);
     }
 
     public void fillRect(SDL_Rect rect, int color) throws Throwable {
-        int err = (int) SDL_FillRect_mh_$.invoke(rect == null ? MemoryAddress.NULL : rect, color);
+        int err = (int) SDL_FillRect_mh_$.invoke(rect == null ? MemorySegment.NULL : rect, color);
         if (err != 0) {}
     }
 
     public void blitSurface(SDL_Surface src, SDL_Rect srcrect, SDL_Rect destrec) throws Throwable {
         SDL_BlitSurface_mh.invoke(
                 src.wrapped.address(),
-                srcrect == null ? MemoryAddress.NULL : srcrect.wrapped.address(),
+                srcrect == null ? MemorySegment.NULL : srcrect.wrapped,
                 wrapped.address(),
-                destrec == null ? MemoryAddress.NULL : destrec.wrapped.address());
+                destrec == null ? MemorySegment.NULL : destrec.wrapped);
     }
 
-    public void blitScaled(SDL_Surface src, SDL_Rect srcrect, SDL_Rect destrec)  {
+    public void blitScaled(SDL_Surface src, SDL_Rect srcrect, SDL_Rect destrec) {
         try {
             SDL_UpperBlitScaled_mh.invoke(
-                    src.wrapped.address(),
-                    srcrect == null ? MemoryAddress.NULL : srcrect.wrapped.address(),
-                    wrapped.address(),
-                    destrec == null ? MemoryAddress.NULL : destrec.wrapped.address());
+                    src.wrapped,
+                    srcrect == null ? MemorySegment.NULL : srcrect.wrapped,
+                    wrapped,
+                    destrec == null ? MemorySegment.NULL : destrec.wrapped);
         } catch (Throwable e) {
             throw new RuntimeException(e);
         }
     }
 
     public SDL_PixelFormat pixelFormat() {
-        var memorySegment = wrapped.asSegment(layout.byteSize(), ResourceScope.globalScope());
-        var sdl_PixelFormat = SDL_Surface.format(memorySegment)
-                .asSegment(SDL_PixelFormat.layout.byteSize(), ResourceScope.globalScope());
+        var sdl_PixelFormat = SDL_Surface.format(wrapped);
         return new SDL_PixelFormat(sdl_PixelFormat);
     }
 
-    public static void freeSurface(MemoryAddress memoryAddress) {
+    public static void freeSurface(MemorySegment MemorySegment) {
         try {
-            SDL_FreeSurface_mh.invoke(memoryAddress);
+            SDL_FreeSurface_mh.invoke(MemorySegment);
         } catch (Throwable e) {
             e.printStackTrace();
         }

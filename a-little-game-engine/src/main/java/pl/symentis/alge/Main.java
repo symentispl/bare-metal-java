@@ -1,9 +1,8 @@
 package pl.symentis.alge;
 
+import java.nio.file.Paths;
 import pl.symentis.alge.runtime.*;
 import pl.symentis.alge.sprites.SpriteSequence;
-
-import java.nio.file.Paths;
 
 public class Main {
 
@@ -16,12 +15,12 @@ public class Main {
 
         SDL_PixelFormat pixelFormat = surface.pixelFormat();
 
-        var spriteSequenceWalking = SpriteSequence.loadFrom(
-                runtime, Paths.get("a-little-game-engine/src/main/resources/Minotaur_01/PNG Sequences/Walking/"));
-        var spriteSequenceAttacking = SpriteSequence.loadFrom(
-                runtime, Paths.get("a-little-game-engine/src/main/resources/Minotaur_01/PNG Sequences/Attacking/"));
-        var spriteSequenceIdle = SpriteSequence.loadFrom(
-                runtime, Paths.get("a-little-game-engine/src/main/resources/Minotaur_01/PNG Sequences/Idle/"));
+        var spriteSequenceWalking =
+                SpriteSequence.loadFrom(runtime, Paths.get("src/main/resources/Minotaur_01/PNG Sequences/Walking/"));
+        var spriteSequenceAttacking =
+                SpriteSequence.loadFrom(runtime, Paths.get("src/main/resources/Minotaur_01/PNG Sequences/Attacking/"));
+        var spriteSequenceIdle =
+                SpriteSequence.loadFrom(runtime, Paths.get("src/main/resources/Minotaur_01/PNG Sequences/Idle/"));
 
         var rect = SDL_Rect.create(0, 0, 186, 128);
         var minotaur = new Minotaur(spriteSequenceWalking, spriteSequenceAttacking, spriteSequenceIdle, rect);
@@ -29,7 +28,6 @@ public class Main {
         var black = pixelFormat.SDL_MapRGB(0x00, 0x00, 0x00);
         var event = SDL_Event.empty();
         while (true) {
-            var currentTimeMillis = System.currentTimeMillis();
             if (SDL_events.pollEvent(event)) {
                 int type = event.type();
                 if (type == SDL_events.SDL_QUIT) {
@@ -50,6 +48,7 @@ public class Main {
 
             minotaur.update();
 
+            var currentTimeMillis = System.currentTimeMillis();
             surface.fillRect(null, black);
             minotaur.draw(surface);
             window.updateWindowSurface();

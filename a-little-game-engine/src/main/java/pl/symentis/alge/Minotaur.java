@@ -1,11 +1,10 @@
 package pl.symentis.alge;
 
+import java.util.Iterator;
 import pl.symentis.alge.runtime.SDL_Rect;
 import pl.symentis.alge.runtime.SDL_Surface;
 import pl.symentis.alge.sprites.Sprite;
 import pl.symentis.alge.sprites.SpriteSequence;
-
-import java.util.Iterator;
 
 public class Minotaur extends Sprite {
 
