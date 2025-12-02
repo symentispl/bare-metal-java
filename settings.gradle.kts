@@ -1,3 +1,3 @@
-rootProject.name = "threads-locks-and-atomics"
+rootProject.name = "bare-metal-java"
 include("slides")
 include("code")
