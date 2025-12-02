@@ -57,3 +57,5 @@ gradle/
 .settings/
 
 .project
+
+.vscode/

@@ -1,4 +1,4 @@
-= Black metal Java
+= Bare metal Java
 :idprefix:
 :stem: asciimath
 :backend: html
@@ -17,17 +17,13 @@
 
 == about me
 
-Jarek Pałka (@j_palka)
+Jarek Pałka
 
 Neo4j (a graph database) +
 senior staff engineer/team lead/benchmarking team
 
 over 20 years with JVM ( and people) +
 speaker, coder, architect
-
-founder of SegFault (https://segfault.events) conference +
-godfather of Programistyczna Grupa Rozwoju +
-and proud father of new baby, **JVM Club** (working title) 
 
 == DISCLAIMER
 
@@ -37,14 +33,13 @@ my own opinions, references to sex, drugs, religion, alcohol and politics
 if this does make you feel offended +
 that's good it means you have something you care about in your life
 
-
 === agenda
 
 <<the_raise_and_fall_on_managed_runtime,a sip of history>> +
 <<malloc_baby,malloc, baby!>> +
 <<hello_c,hello, C!>>
 
-== the raise and fall on managed runtime
+== the raise and fall of managed runtime
 
 yet another taxonomy of programming languages
 
@@ -123,11 +118,21 @@ internal API abused beyond creators imagination
 === welcome, bare metal Java
 
 * foreign memory
-* foreign linker
-* vectorization
+* foreign functions
+* vectorization (SIMD)
 * frozen arrays
 * primitive objects (part of Valhalla)
 * low-level concurrency controls (VarHandles)
+
+=== but for today?
+
+we are only going to focus on +
+https://openjdk.org/jeps/454[JEP 454: Foreign Function & Memory API]
+
+=== !
+
+[quote,,JEP 454]
+Introduce an API by which Java programs can interoperate with code and data outside of the Java runtime. By efficiently invoking foreign functions (i.e., code outside the JVM), and by safely accessing foreign memory (i.e., memory not managed by the JVM), the API enables Java programs to call native libraries and process native data without the brittleness and danger of JNI. 
 
 == malloc, baby
 
@@ -145,64 +150,21 @@ not official API,
 
 image::https://media.giphy.com/media/yvBAuESRTsETqNFlEl/giphy.gif[background]
 
-=== trial and error
-
-* first proposed by JEP 370 and targeted to Java 14
-* and later re-incubated by JEP 383 which was targeted to Java 15
-* third proposal https://openjdk.java.net/jeps/393[JEP 393: Foreign-Memory Access API (Third Incubator)] released with Java 16
-* fourth proposal https://openjdk.java.net/jeps/412[JEP 412: Foreign Function & Memory API (Incubator)] (merge of two JEPs, but more about it later)
-* fifth proposal JEP https://openjdk.org/jeps/419[419: Foreign Function & Memory API (Second Incubator)]
-* Java 19, finally in preview
-* Java 20, one more preview :)
-
-=== when this is going to end?
-
-image::https://media.giphy.com/media/3oEduIwLTB806poveg/giphy.gif[background]
-
-=== !
-
-all examples here are based on Java 20
 
 === goals
 
-[quote,,JEP 434]
-Ease of use — Replace the Java Native Interface (JNI) with a superior, pure-Java development model.
+    Productivity — Replace the brittle machinery of native methods and the Java Native Interface (JNI) with a concise, readable, and pure-Java API.
 
-=== goals
+    Performance — Provide access to foreign functions and memory with overhead comparable to, if not better than, JNI and sun.misc.Unsafe.
 
-[quote,,]
-    Performance — Provide performance that is comparable to, if not better than, existing APIs such as JNI and sun.misc.Unsafe.
+    Broad platform support — Enable the discovery and invocation of native libraries on every platform where the JVM runs.
 
-=== goals
+    Uniformity — Provide ways to operate on structured and unstructured data, of unlimited size, in multiple kinds of memory (e.g., native memory, persistent memory, and managed heap memory).
 
-[quote,,]
-    Generality — Provide ways to operate on different kinds of foreign memory (e.g., native memory, persistent memory, and managed heap memory) and, over time, to accommodate other platforms (e.g., 32-bit x86) and foreign functions written in languages other than C (e.g., C++, Fortran).
+    Soundness — Guarantee no use-after-free bugs, even when memory is allocated and deallocated across multiple threads.
 
-=== goals
+    Integrity — Allow programs to perform unsafe operations with native code and data, but warn users about such operations by default.
 
-[quote,,]
-    Safety — Allow programs to perform unsafe operations on foreign memory, but warn users about such operations by default.
-
-=== non-goals
-
-[quote,,]
-Re-implement JNI on top of this API, or otherwise change JNI in any way;
-
-=== non-goals
-
-[quote,,]
-Re-implement legacy Java APIs, such as sun.misc.Unsafe, on top of this API;
-
-=== non-goals
-
-[quote,,]
-Provide tooling that mechanically generates Java code from native-code header files; or
-
-=== non-goals
-
-[quote,,]
-Change how Java applications that interact with native libraries are 
-packaged and deployed (e.g., via multi-platform JAR files).
 
 == The Foreign-Memory Access API
 
