@@ -19,7 +19,8 @@
 
 Jarek Pałka (@j_palka)
 
-Neo4j (a graph database) staff engineer/team lead/benchmarking team
+Neo4j (a graph database) +
+senior staff engineer/team lead/benchmarking team
 
 over 20 years with JVM ( and people) +
 speaker, coder, architect

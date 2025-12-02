@@ -2,10 +2,7 @@ package pl.symentis.jvm.foreign;
 
 import static java.lang.System.out;
 
-import java.lang.foreign.FunctionDescriptor;
-import java.lang.foreign.Linker;
-import java.lang.foreign.SegmentScope;
-import java.lang.foreign.ValueLayout;
+import java.lang.foreign.*;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
@@ -17,7 +14,7 @@ public class SIGTERM {
 
         out.println("creating signal handler stub");
         // QUESTION: why the hell global scope?
-        var globalSession = SegmentScope.global();
+        var globalSession = Arena.global();
         var signalHandler = MethodHandles.lookup()
                 .findStatic(SIGTERM.class, "onSignal", MethodType.methodType(void.class, int.class));
         var signalHandlerStub =

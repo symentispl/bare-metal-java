@@ -16,6 +16,6 @@ public class GetPIDExample {
         var functionDescriptor = FunctionDescriptor.of(ValueLayout.JAVA_INT);
 
         var methodHandle = linker.downcallHandle(getpidSymbol, functionDescriptor);
-        System.out.println(methodHandle.invoke());
+        System.out.println("PID: "+methodHandle.invoke());
     }
 }

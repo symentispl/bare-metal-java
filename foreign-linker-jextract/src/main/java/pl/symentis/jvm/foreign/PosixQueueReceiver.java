@@ -5,6 +5,10 @@ import pl.symentis.foreign.posix.errno.errno_h;
 import pl.symentis.foreign.posix.mqueue.mq_attr;
 import pl.symentis.foreign.posix.mqueue.mqueue_h;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SegmentAllocator;
+
 import static java.lang.System.out;
 
 public class PosixQueueReceiver {
@@ -12,17 +16,15 @@ public class PosixQueueReceiver {
     private static int MSG_SIZE = 8192;
 
     public static void main(String[] args) {
-        try (var resourceScope = ResourceScope.newConfinedScope()) {
-
-            var segmentAllocator = SegmentAllocator.nativeAllocator(resourceScope);
-            var mqueue_name = segmentAllocator.allocateUtf8String("/queue");
-
+        try (var resourceScope = Arena.ofConfined()) {
+            var mqueue_name = resourceScope.allocateFrom("/queue");
             var mqAttr = mq_attr.allocate(resourceScope);
             mq_attr.mq_maxmsg$set(mqAttr, 300);
             mq_attr.mq_msgsize$set(mqAttr, MSG_SIZE);
             mq_attr.mq_flags$set(mqAttr, 0);
 
-            var queue_desc = mqueue_h.mq_open(mqueue_name,
+            var queue_desc = mqueue_h.mq_open(
+                    mqueue_name,
                     mqueue_h.O_RDWR() | mqueue_h.O_CREAT(),
                     0664, // permission of queue
                     0); // additional attributes
@@ -35,9 +37,9 @@ public class PosixQueueReceiver {
             out.println("POSIX queue opened");
 
             while (true) {
-                try (var innerResourceScope = ResourceScope.newConfinedScope()) {
+                try (var innerResourceScope = Arena.ofConfined()) {
 
-                    var msg = MemorySegment.allocateNative(MSG_SIZE, innerResourceScope);
+                    var msg = innerResourceScope.allocateNative(MSG_SIZE, innerResourceScope);
                     var msg_prio = MemorySegment.allocateNative(ValueLayout.JAVA_LONG, innerResourceScope);
                     var receivedBytes = mqueue_h.mq_receive(queue_desc, msg, MSG_SIZE, msg_prio);
 
@@ -51,10 +53,8 @@ public class PosixQueueReceiver {
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
-
             }
         }
-
     }
 
     private static int errno(ResourceScope resourceScope) {
