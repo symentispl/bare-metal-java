@@ -1,4 +1,4 @@
-@import "../revealjs-plugins/reveal.js-copycode-1.0.0/assets/js/revealjs/plugin/copycode/copycode.css";
+@import "../plugins/copycode/plugin/copycode/copycode.css";
 
 h1 {
   background-color: rgba(0, 0, 0, 0.6);

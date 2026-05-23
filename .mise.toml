@@ -1,0 +1,46 @@
+[settings]
+ruby.compile = false
+
+[tools]
+ruby = "3.3"
+node = "22"
+
+[env]
+BUNDLE_PATH = "vendor/bundle"
+
+[tasks.install]
+description = "Install Ruby gems"
+run = "bundle install"
+
+[tasks.build]
+description = "Build the slides (HTML output in build/slides/)"
+depends = ["install"]
+run = [
+  "mkdir -p build/slides",
+  "bundle exec asciidoctor -r asciidoctor-revealjs -r asciidoctor-diagram -b revealjs -a revealjsdir=https://cdn.jsdelivr.net/npm/reveal.js@5.1.0 -a puppeteer-config=$(pwd)/slides/puppeteer-config.json -D build/slides slides/src/main/slides/index.adoc",
+  "cp -r slides/src/main/resources/. build/slides/",
+  "cp slides/src/main/slides/revealjs-plugins.js build/slides/"
+]
+
+[tasks.serve]
+description = "Build and serve slides with live reload at http://localhost:4000"
+depends = ["build"]
+run = "bundle exec ruby -run -e httpd build/slides -p 4000 & bundle exec guard --no-interactions"
+
+[tasks.export-pdf]
+description = "Export slides as PDF"
+depends = ["build"]
+run = """
+bundle exec ruby -run -e httpd build/slides -p 4000 &
+SERVER_PID=$!
+echo "Waiting for HTTP server..."
+until curl -s http://localhost:4000 > /dev/null 2>&1; do sleep 0.5; done
+echo "Server ready. Exporting PDF..."
+mkdir -p build/export
+decktape automatic --chrome-arg="--no-sandbox" http://localhost:4000 build/export/slides.pdf
+kill $SERVER_PID
+"""
+
+[tasks.clean]
+description = "Remove build output"
+run = "rm -rf build/slides build/export build/dist"
