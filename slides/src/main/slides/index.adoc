@@ -12,7 +12,6 @@
 :imagesdir: images
 :customcss: css/custom.css
 :icons: font
-:docinfo: shared
 :title-slide-background-image: pexels-eberhard-grossgasteiger-1287075.jpg
 
 == about me
