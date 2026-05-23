@@ -153,18 +153,19 @@ image::https://media.giphy.com/media/yvBAuESRTsETqNFlEl/giphy.gif[background]
 
 === goals
 
-    Productivity — Replace the brittle machinery of native methods and the Java Native Interface (JNI) with a concise, readable, and pure-Java API.
+Productivity:: Replace the brittle machinery of native methods and the Java Native Interface (JNI) with a concise, readable, and pure-Java API.
 
-    Performance — Provide access to foreign functions and memory with overhead comparable to, if not better than, JNI and sun.misc.Unsafe.
+Performance:: Provide access to foreign functions and memory with overhead comparable to, if not better than, JNI and sun.misc.Unsafe.
 
-    Broad platform support — Enable the discovery and invocation of native libraries on every platform where the JVM runs.
+Broad platform support:: Enable the discovery and invocation of native libraries on every platform where the JVM runs.
 
-    Uniformity — Provide ways to operate on structured and unstructured data, of unlimited size, in multiple kinds of memory (e.g., native memory, persistent memory, and managed heap memory).
+=== goals
 
-    Soundness — Guarantee no use-after-free bugs, even when memory is allocated and deallocated across multiple threads.
+Uniformity:: Provide ways to operate on structured and unstructured data, of unlimited size, in multiple kinds of memory (e.g., native memory, persistent memory, and managed heap memory).
 
-    Integrity — Allow programs to perform unsafe operations with native code and data, but warn users about such operations by default.
+Soundness:: Guarantee no use-after-free bugs, even when memory is allocated and deallocated across multiple threads.
 
+Integrity:: Allow programs to perform unsafe operations with native code and data, but warn users about such operations by default.
 
 == The Foreign-Memory Access API
 
@@ -173,8 +174,8 @@ Objects created with the new keyword are stored in the JVM's heap, where they ar
 
 === !
 
+* Arena
 * MemorySegment 
-* SegmentScope
 * MemoryLayout
 
 === MemorySegment
@@ -209,19 +210,18 @@ An arena has a scope, called the arena scope. When the arena is closed, the aren
 
 === thread confinement
 
-if you use _confined or implicit scope_, +
-memory segments are confined to thread it created, +
-any access from other threads is forbidden,
+use `Arena.ofConfined()` to bind a segment to the creating thread — +
+any access from other threads throws `WrongThreadException`,
 
-you can use _shared scope_ to make segment shareable between threads
+use `Arena.ofShared()` to allow safe concurrent access from multiple threads, +
+use `Arena.ofAuto()` for GC-managed lifetime (no explicit close required)
 
 === dereferencing memory
 
-* to obtain a memory access var handle, clients must start from `MemoryLayout.varHandle(Class<?> carrier, PathElement... elements)`
-* This determines the variable type (all primitive types but void and boolean are supported), as well as the alignment constraint, and the byte order associated to a memory access var handle.
-* `carrier` type is _primitive_ type which will carry value of memory segment
-* The resulting memory access var handle can then be combined in various ways to emulate different addressing modes.
-* The var handles created by this class feature a mandatory coordinate type (of type MemorySegment), and one long coordinate type, which represents the offset, in bytes, relative to the segment, at which dereference should occur.
+* to obtain a memory access var handle, clients call `MemoryLayout.varHandle(PathElement... elements)`
+* the carrier type (the Java type used to read/write the value) is derived automatically from the selected `ValueLayout` — no explicit `Class<?>` carrier parameter
+* alignment constraint and byte order are taken from the selected value layout (e.g. `ValueLayout.JAVA_INT`, `ValueLayout.JAVA_LONG`)
+* The resulting var handle has a leading `MemorySegment` coordinate and one `long` coordinate (the base offset), plus one `long` per open path element (e.g. sequence index).
 
 === MemoryLayout
 
@@ -249,7 +249,7 @@ struct {
 
 * data structure alignment, unaligned access will throw exception,
 * memory layout supports padding,
-* var handles on memory segments can use `MemoryAccess` modes (atomic, volatile, acquire-get)
+* var handles support `VarHandle.AccessMode` operations (e.g. `getAcquire`, `setRelease`, `compareAndSet`) — the `MemoryAccess` utility class was removed in the final API
 
 === unsafe memory segments
 
@@ -314,7 +314,7 @@ Linking a foreign function is a process which requires a function descriptor, a 
 
 [quote,,]
 Creating an upcall stub requires a method handle and a function descriptor; in this case, the set of memory layouts in the function descriptor specify the signature of the function pointer associated with the upcall stub. 
-Upcall stubs are modelled by instances of type MemorySegmentPREVIEW; upcall stubs can be passed by reference to other downcall method handles and, they are released via their associated scope
+Upcall stubs are modelled by instances of type MemorySegment; upcall stubs can be passed by reference to other downcall method handles and they are released when the associated arena is closed
 
 === !
 
@@ -327,18 +327,16 @@ from C header files, to be able to work any advanced C library
 
 === a real gem
 
-panama early access builds contain `jextract` command line, which generates
-classes (and source files), from any C header file,
+`jextract` is a standalone tool (no longer bundled with Panama EA builds), +
+it generates Java bindings from C header files using the clang C API
 
-with some limitations
-
-https://jdk.java.net/panama/[Project Panama Early-Access Builds]
+https://jdk.java.net/jextract/[jextract Early-Access Builds]
 
 === jextract
 
 it generates Java code from C header files
 
-    jextract -d ${build.directory}/generated-sources -t pl.symentis.foreign.posix --source /usr/include/mqueue.h
+    jextract --output ${build.directory}/generated-sources --target-package pl.symentis.foreign.posix /usr/include/mqueue.h
 
 === what's in it for you?
 
