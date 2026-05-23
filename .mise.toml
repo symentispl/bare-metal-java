@@ -39,7 +39,7 @@ echo "Waiting for HTTP server..."
 until curl -s http://localhost:4000 > /dev/null 2>&1; do sleep 0.5; done
 echo "Server ready. Exporting PDF..."
 mkdir -p build/export
-decktape automatic --chrome-arg="--no-sandbox" http://localhost:4000 build/export/slides.pdf
+decktape reveal --chrome-arg="--no-sandbox" http://localhost:4000 build/export/slides.pdf
 kill $SERVER_PID
 """
 
