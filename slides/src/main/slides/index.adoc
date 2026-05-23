@@ -62,11 +62,23 @@ all the hard things
 to give up control for safety +
 (it is not the only reason)
 
-=== !
+=== memory safety
 
-* memory safety
-* operation safety
-* execution safety
+the runtime guarantees your program can only touch memory it owns +
+no buffer overflows, no dangling pointers, no use-after-free +
+*the runtime tracks every allocation and rejects every illegal access*
+
+=== operation safety
+
+the runtime guarantees that every operation is legal for its operands +
+you cannot divide a string, cast an object to an incompatible type, or call a method that does not exist +
+*the bytecode verifier rejects invalid programs before they ever run*
+
+=== execution safety
+
+the runtime guarantees that control flow can only reach valid code +
+you cannot jump into the middle of an instruction, corrupt the call stack, or return to an arbitrary address +
+*every branch target and stack frame is verified before execution*
 
 === !
 
