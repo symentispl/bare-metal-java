@@ -62,3 +62,6 @@ gradle/
 
 # Bundler gems
 vendor/
+
+# JVM heap dumps
+*.hprof

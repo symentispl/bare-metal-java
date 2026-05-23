@@ -10,20 +10,13 @@ BUILD_CMD = [
     " -a puppeteer-config=#{Dir.pwd}/slides/puppeteer-config.json" \
     " -D build/slides" \
     " slides/src/main/slides/index.adoc",
-  "cp -r slides/src/main/resources/. build/slides/",
-  "cp slides/src/main/slides/revealjs-plugins.js build/slides/"
+  "cp -r slides/src/main/resources/. build/slides/"
 ].join(" && ").freeze
 
 guard :shell do
   watch(%r{slides/src/main/slides/.+\.adoc$}) do |m|
     puts "==> Rebuilding: #{m[0]}"
     system(BUILD_CMD)
-    puts "==> Done"
-  end
-
-  watch(%r{slides/src/main/slides/revealjs-plugins\.js$}) do |m|
-    puts "==> Copying: #{m[0]}"
-    system("cp slides/src/main/slides/revealjs-plugins.js build/slides/")
     puts "==> Done"
   end
 
