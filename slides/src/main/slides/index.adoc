@@ -16,13 +16,14 @@
 
 == about me
 
-Jarek Pałka
+Jarosław Pałka
 
 Neo4j (a graph database) +
 senior staff engineer/team lead/benchmarking team
 
 over 20 years with JVM ( and people) +
 speaker, coder, architect
+
 
 == DISCLAIMER
 
@@ -40,11 +41,7 @@ that's good it means you have something you care about in your life
 
 == the raise and fall of managed runtime
 
-yet another taxonomy of programming languages
-
-* compiled (C/C++)
-* compiled with managed runtime (Go, Pony)
-* interpreted with managed runtime (LISP,Smalltalk,Java,C#,JavaScript,Erlang,Python, PHP, Perl) (aka virtual machines)
+**\... or why we need Java Virtual Machine for**
 
 === managed runtime
 
@@ -88,9 +85,9 @@ you loose a lot of opportunities to optimize your code +
 == Java as a system's language?
 
 stupid idea! +
-(especially when management of resources is critical)
+(especially when resource management is critical)
 
-=== !
+=== what all these things have in common?
 
 Apache Kafka +
 Neo4j +
@@ -116,6 +113,13 @@ you don't want your databases to randomly crash
 === but all we really need is
 
 need for speed :)
+
+
+[role="highlight_section_title"]
+=== so we broke the window
+
+image::https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExeWlwZDc4cDAwcW1hMGdhbmdzOHhpMDNtb3d1dnFucjY2NHVocTBtbiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/2erqKj7wV12bdoPagM/giphy.gif[background]
+
 
 === sun.misc.Unsafe
 
@@ -351,12 +355,17 @@ it generates Java code from C header files
 
 === what's in it for you?
 
-=== nothing?
+=== !
+
+image::https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExandiMmVvbHdrMWd4MDR4Y3JsNnQwdW1zdm10eWxoMmp2a2VlYzAyYyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Z5xk7fGO5FjjTElnpT/giphy.gif[background,contain]
 
 === !
 
 * when working with huge in-memory data sets, this way you can avoid GC
-* interacting with non-JVM and JVM processes over share memory (via memory mapped files)
+* interacting with non-JVM and JVM processes over shared memory 
+** via memory mapped files
+** POSIX queues
+** other forms of IPC
 * C coding is no longer required to call native code in a platform agnostic way (but you still need to understand pointers, addressing modes and how memory works)
 * all the libraries code you use, like database drivers, ML algorithms and Big Data, will benefit from safer and stable API 
 * it would be easier to use low-level OS functions, Java will faster adapt to every changing OSs and hardware ecosystems, one example is io_uring
@@ -366,6 +375,7 @@ it generates Java code from C header files
 * will Java replace Python in data science? probably not, but it maybe easier to make production grade ML models with Java
 * will next Cyberpunk be written in JVM? probably not, but it is fun to think about
 
+[roles="highlight_section_title"]
 == keep on rockin' and stay safe
 
 image::https://media.giphy.com/media/u4p08LZeWVNTi/giphy.gif[background]
