@@ -30,18 +30,18 @@ speaker, coder, architect
 this presentation may contain strong language, +
 my own opinions, references to sex, drugs, religion, alcohol and politics
 
-if this does make you feel offended +
-that's good it means you have something you care about in your life
+if this does offend you +
+that's good — it means you have something you care about in your life
 
 === agenda
 
-<<the_raise_and_fall_on_managed_runtime,a sip of history>> +
+<<the_rise_and_fall_of_managed_runtime,a sip of history>> +
 <<malloc_baby,malloc, baby!>> +
 <<hello_c,hello, C!>>
 
-== the raise and fall of managed runtime
+== the rise and fall of managed runtime
 
-**\... or why we need Java Virtual Machine for**
+**\... or why we need a Java Virtual Machine for**
 
 === managed runtime
 
@@ -51,7 +51,7 @@ all the hard things
 * threads management
 * code management (runtime linking)
 * calling native code (because we are interpreted)
-* (operating system abstraction)*
+* (operating system abstraction)
 
 === why?
 
@@ -79,10 +79,10 @@ you cannot jump into the middle of an instruction, corrupt the call stack, or re
 === !
 
 when you give up control, +
-you loose a lot of opportunities to optimize your code +
-(notice I didn't say you loose performance)
+you lose a lot of opportunities to optimize your code +
+(notice I didn't say you lose performance)
 
-== Java as a system's language?
+== Java as a systems language?
 
 stupid idea! +
 (especially when resource management is critical)
@@ -123,7 +123,7 @@ image::https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExeWlwZDc4cDAwcW1hMGdhbmd
 
 === sun.misc.Unsafe
 
-internal API abused beyond creators imagination
+internal API abused beyond creators' imagination
 
 * memory allocation
 * object layout
@@ -182,7 +182,7 @@ Soundness:: Guarantee no use-after-free bugs, even when memory is allocated and 
 
 Integrity:: Allow programs to perform unsafe operations with native code and data, but warn users about such operations by default.
 
-== The Foreign-Memory Access API
+== the Foreign-Memory Access API
 
 [quote,,]
 Objects created with the new keyword are stored in the JVM's heap, where they are subject to garbage collection when no longer needed. However, the cost and unpredictability associated with garbage collection is unacceptable for performance-critical libraries such as Tensorflow, Ignite, Lucene, and Netty. They need to store data outside the heap, in off-heap memory which they allocate and deallocate themselves. Access to off-heap memory also allows data to be serialized and deserialized by mapping files directly into memory via, e.g., mmap.
@@ -198,7 +198,7 @@ Objects created with the new keyword are stored in the JVM's heap, where they ar
 models a contiguous memory region with given spatial and temporal bounds, +
 any access outside spatial or temporal bounds will end up with exception
 
-memory addresses are now modeled by zero-length memory segments, it used to `MemoryAddress` class
+memory addresses are now modeled by zero-length memory segments; they used to be modeled by the now-removed `MemoryAddress` class
 
 === !
 
@@ -338,7 +338,7 @@ image::https://media.giphy.com/media/plcoWBSrPvOP6/giphy.gif[background]
 === too much magic
 
 as you can imagine, it means handwriting all `FunctionDescriptor` and structs and unions
-from C header files, to be able to work any advanced C library
+from C header files, to be able to work with any advanced C library
 
 === a real gem
 
@@ -375,7 +375,7 @@ image::https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExandiMmVvbHdrMWd4MDR4Y3J
 * will Java replace Python in data science? probably not, but it maybe easier to make production grade ML models with Java
 * will next Cyberpunk be written in JVM? probably not, but it is fun to think about
 
-[roles="highlight_section_title"]
+[role="highlight_section_title"]
 == keep on rockin' and stay safe
 
 image::https://media.giphy.com/media/u4p08LZeWVNTi/giphy.gif[background]
